@@ -11,3 +11,9 @@ Thumbs.db
 
 # Node (if ever used)
 node_modules/
+
+# Sonar / coverage artifacts
+.sonarqube/
+.scannerwork/
+coverage/
+coverage*/
