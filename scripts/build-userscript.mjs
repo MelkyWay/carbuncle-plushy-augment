@@ -5,13 +5,13 @@ const rawPkg = await readFile(new URL("../package.json", import.meta.url), "utf8
 const pkg = JSON.parse(rawPkg.replace(/^\uFEFF/, ""));
 
 const header = `// ==UserScript==
-// @name         FF14 Fish Tracker - Exact Times + Alerts
-// @namespace    carbuncleplushy-augment
+// @name         FF14 Carbuncle Plushy QoL
+// @namespace    carbuncleplushy-qol
 // @version      ${pkg.version}
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
-// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js
-// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js
+// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js
+// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
@@ -21,7 +21,7 @@ const header = `// ==UserScript==
 
 await build({
   entryPoints: ["src/main.js"],
-  outfile: "ff14-carbuncle-plushy-augment.js",
+  outfile: "ff14-carbuncle-plushy-qol.js",
   bundle: true,
   format: "iife",
   platform: "browser",
@@ -29,4 +29,4 @@ await build({
   banner: { js: header }
 });
 
-console.log(`Built ff14-carbuncle-plushy-augment.js (v${pkg.version})`);
+console.log(`Built ff14-carbuncle-plushy-qol.js (v${pkg.version})`);

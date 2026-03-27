@@ -1,6 +1,8 @@
-﻿# FF14 Fish Tracker Augment
+﻿# FF14 Carbuncle Plushy QoL
 
 A small userscript that makes [FFX|V Fish Tracker](https://ff14fish.carbuncleplushy.com/) more convenient for daily fishing.
+
+Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncle-plushy-qol)
 
 ## What You Get
 
@@ -19,7 +21,7 @@ A small userscript that makes [FFX|V Fish Tracker](https://ff14fish.carbuncleplu
 ### Option A: Install from GitHub URL (recommended)
 
 1. Open this URL in your browser:
-   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js`
+   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js`
 2. Tampermonkey/Violentmonkey should prompt to install. Confirm.
 3. Open/reload <https://ff14fish.carbuncleplushy.com/>.
 
@@ -34,7 +36,7 @@ Why this is recommended:
    - [Tampermonkey](https://www.tampermonkey.net/)
    - or [Violentmonkey](https://violentmonkey.github.io/)
 2. In your userscript manager, create a new script.
-3. Paste the contents of `ff14-carbuncle-plushy-augment.js`.
+3. Paste the contents of `ff14-carbuncle-plushy-qol.js`.
 4. Save, then reload <https://ff14fish.carbuncleplushy.com/>.
 
 When to use this option:
@@ -115,7 +117,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - `src/main.js` (userscript behavior)
   - `src/core.js` (shared pure logic, unit-tested)
 - Generated file:
-  - `ff14-carbuncle-plushy-augment.js` (this is the file to install in userscript managers)
+  - `ff14-carbuncle-plushy-qol.js` (this is the file to install in userscript managers)
 - Typical dev loop:
   1. Edit `src/main.js` / `src/core.js`
   2. Run `npm run build`
@@ -139,3 +141,4 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 ## Disclaimer
 
 Unofficial project. Not affiliated with Carbuncle Plushy, Square Enix, or the FFX|V Fish Tracker maintainers.
+
