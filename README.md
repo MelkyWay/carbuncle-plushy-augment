@@ -111,12 +111,30 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - `npm test`
 - Watch mode:
   - `npm run test:watch`
+- Build userscript from source modules:
+  - `npm run build`
 
 ## Privacy
 
 - Runs only on `https://ff14fish.carbuncleplushy.com/*`.
 - Does not send your data anywhere.
 - Saves your preferences locally in userscript storage.
+
+## Development / Build Workflow
+
+- Source of truth:
+  - `src/main.js` (userscript behavior)
+  - `src/core.js` (shared pure logic, unit-tested)
+- Generated file:
+  - `ff14-carbuncle-plushy-augment.js` (this is the file to install in userscript managers)
+- Typical dev loop:
+  1. Edit `src/main.js` / `src/core.js`
+  2. Run `npm run build`
+  3. Update/reload script in Tampermonkey/Violentmonkey
+- Before pushing:
+  - Run `npm run verify` (tests + build)
+- Release/version note:
+  - Bump `package.json` version before release; the userscript `@version` is generated from it during build.
 
 ## Disclaimer
 
