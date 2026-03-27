@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         FF14 Fish Tracker - Exact Times + Alerts
 // @namespace    carbuncleplushy-augment
-// @version      1.6.1
+// @version      1.7.0
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
 // @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js
@@ -31,7 +31,8 @@
     rowCache: new WeakMap(),
     audioCtx: null,
     audioUnlocked: false,
-    menuIds: []
+    menuIds: [],
+    canRefreshMenu: (typeof GM_unregisterMenuCommand === "function")
   };
 
   function hasGM() {
@@ -75,7 +76,7 @@
       .ff14fish-aug-exact { margin-top: 2px; font-size: 11px; opacity: 0.85; line-height: 1.25; }
       .ff14fish-aug-toast-wrap { position: fixed; right: 14px; bottom: 14px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
       .ff14fish-aug-toast { background: rgba(20,20,24,.95); color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 8px 10px; min-width: 260px; max-width: 420px; font-size: 13px; box-shadow: 0 8px 22px rgba(0,0,0,.35); }
-      .ff14fish-aug-status { position: fixed; right: 12px; top: 10vh; z-index: 99999; font-size: 12px; background: rgba(15,15,18,.92); color:#eee; border:1px solid rgba(255,255,255,.2); padding:6px 8px; border-radius:6px; white-space: pre-line; line-height: 1.35; }
+      .ff14fish-aug-status { position: fixed; right: 12px; top: 5vh; z-index: 99999; font-size: 12px; background: rgba(15,15,18,.92); color:#eee; border:1px solid rgba(255,255,255,.2); padding:6px 8px; border-radius:6px; white-space: pre-line; line-height: 1.35; }
     `;
     document.head.appendChild(style);
   }
@@ -114,7 +115,7 @@
     const ap = settings.sound ? (state.audioUnlocked ? "on/unlocked" : "on/locked") : "off";
     const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
     const toasts = settings.toasts ? "on" : "off";
-    const desktop = settings.desktopNotification ? "on" : "off";
+    const desktop = (settings.desktopNotification && ("Notification" in window) && Notification.permission === "granted") ? "on" : "off";
     el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nsound: ${ap}\ntoasts: ${toasts}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
   }
 
@@ -185,9 +186,40 @@
     if (Notification.permission === "granted") {
       new Notification(title, { body });
     } else {
+      // Normalize legacy state to prevent repeated warning toasts on each alert.
+      writeSettings({ ...settings, desktopNotification: false });
       toast(`Notifications not granted (${Notification.permission}).`);
+      if (state.canRefreshMenu) refreshMenu();
     }
     renderStatus();
+  }
+
+  async function setDesktopNotificationsEnabled(next) {
+    const s = readSettings();
+    if (!next) {
+      writeSettings({ ...s, desktopNotification: false });
+      toast("Desktop notifications disabled.");
+      return;
+    }
+    if (!("Notification" in window)) {
+      writeSettings({ ...s, desktopNotification: false });
+      toast("Desktop notifications unsupported in this browser.");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      writeSettings({ ...s, desktopNotification: true });
+      toast("Desktop notifications enabled.");
+      return;
+    }
+    if (Notification.permission === "default") {
+      const result = await Notification.requestPermission();
+      const enabled = result === "granted";
+      writeSettings({ ...s, desktopNotification: enabled });
+      toast(enabled ? "Desktop notifications enabled." : "Desktop notifications blocked by permission.");
+      return;
+    }
+    writeSettings({ ...s, desktopNotification: false });
+    toast("Desktop notifications denied in browser settings.");
   }
 
   function maybeRequestNotificationPermission() {
@@ -216,6 +248,10 @@
       null;
 
     return { fishName, fishLink, current, upcoming, availCell };
+  }
+
+  function isRowVisible(row) {
+    return row.offsetParent !== null;
   }
 
   function getFishRows() {
@@ -301,6 +337,7 @@
 
       // Strict guards against aggregate/non-fish rows
       if (!fishName || !fishLink) return;
+      if (settings.useVisibleFish && !isRowVisible(row)) return;
       if (!settings.useVisibleFish && !manualTracked.has(fishName.toLowerCase())) return;
 
       const start = computeNextStart(current, upcoming);
@@ -323,7 +360,7 @@
 
   function refreshMenu() {
     if (typeof GM_registerMenuCommand !== "function") return;
-    if (typeof GM_unregisterMenuCommand === "function") {
+    if (state.canRefreshMenu) {
       for (const id of state.menuIds) {
         try {
           GM_unregisterMenuCommand(id);
@@ -338,7 +375,7 @@
     const soundLabel = settings.sound ? "ON" : "OFF";
     const toastsLabel = settings.toasts ? "ON" : "OFF";
     const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
-    const desktopLabel = settings.desktopNotification ? "ON" : "OFF";
+    const desktopLabel = (settings.desktopNotification && ("Notification" in window) && Notification.permission === "granted") ? "ON" : "OFF";
     const badgeLabel = settings.statusBadge ? "ON" : "OFF";
 
     const register = (label, handler) => {
@@ -353,7 +390,7 @@
       writeSettings({ ...s, fish: normalizeFishList(value) });
       toast("Tracked fish updated.");
       renderStatus();
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register("Set alert lead time (minutes)", () => {
@@ -365,7 +402,7 @@
       writeSettings({ ...s, beforeMinutes: n });
       toast(`Alert lead time set to ${n} minute(s).`);
       renderStatus();
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register(`Toggle sound (currently: ${soundLabel})`, () => {
@@ -374,7 +411,7 @@
       writeSettings({ ...s, sound: next });
       toast(`Sound ${next ? "enabled" : "disabled"}.`);
       renderStatus();
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register(`Toggle toasts (currently: ${toastsLabel})`, () => {
@@ -383,7 +420,7 @@
       writeSettings({ ...s, toasts: next });
       if (next) toast("Toasts enabled.");
       renderStatus();
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register(`Toggle tracking mode (currently: ${modeLabel})`, () => {
@@ -392,16 +429,16 @@
       writeSettings({ ...s, useVisibleFish: next });
       toast(`Tracking mode: ${next ? "auto (website)" : "manual fish list"}.`);
       renderStatus();
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register(`Toggle desktop notifications (currently: ${desktopLabel})`, () => {
       const s = readSettings();
       const next = !s.desktopNotification;
-      writeSettings({ ...s, desktopNotification: next });
-      toast(`Desktop notifications ${next ? "enabled" : "disabled"}.`);
-      renderStatus();
-      refreshMenu();
+      setDesktopNotificationsEnabled(next).then(() => {
+        renderStatus();
+        if (state.canRefreshMenu) refreshMenu();
+      });
     });
 
     register(`Toggle status badge (currently: ${badgeLabel})`, () => {
@@ -410,7 +447,7 @@
       writeSettings({ ...s, statusBadge: next });
       if (next) toast("Status badge enabled.");
       renderStatus();
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register("Request desktop notification permission", () => {
@@ -420,7 +457,7 @@
     register("Unlock audio now", async () => {
       const ok = await unlockAudio();
       toast(ok ? "Audio unlocked." : "Could not unlock audio.");
-      refreshMenu();
+      if (state.canRefreshMenu) refreshMenu();
     });
 
     register("Show alert status", () => {
@@ -428,7 +465,8 @@
       const s = readSettings();
       const np = ("Notification" in window) ? Notification.permission : "unsupported";
       const tracking = s.useVisibleFish ? "auto (website)" : "manual";
-      toast(`Tracked: ${tracking}, Sound: ${s.sound ? "on" : "off"}, Toasts: ${s.toasts ? "on" : "off"}, Desktop: ${s.desktopNotification ? "on" : "off"}, Notifications: ${np}`);
+      const desktop = (s.desktopNotification && ("Notification" in window) && Notification.permission === "granted") ? "on" : "off";
+      toast(`Tracked: ${tracking}, Sound: ${s.sound ? "on" : "off"}, Toasts: ${s.toasts ? "on" : "off"}, Desktop: ${desktop}, Notifications: ${np}`);
     });
 
     register("Test alert", () => {
