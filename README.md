@@ -103,17 +103,6 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 - Designed for the English UI text on FF14 Fish Tracker.
 - Times shown are your local system/browser time.
 
-## Testing
-
-- Install test dependencies:
-  - `npm install`
-- Run unit tests:
-  - `npm test`
-- Watch mode:
-  - `npm run test:watch`
-- Build userscript from source modules:
-  - `npm run build`
-
 ## Privacy
 
 - Runs only on `https://ff14fish.carbuncleplushy.com/*`.
@@ -135,6 +124,17 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - Run `npm run verify` (tests + build)
 - Release/version note:
   - Bump `package.json` version before release; the userscript `@version` is generated from it during build.
+
+## Testing
+
+- Install test dependencies:
+  - `npm install`
+- Run unit tests:
+  - `npm test`
+- Watch mode:
+  - `npm run test:watch`
+- Build userscript from source modules:
+  - `npm run build`
 
 ## Disclaimer
 
