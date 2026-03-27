@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         FF14 Fish Tracker - Exact Times + Alerts
 // @namespace    carbuncleplushy-augment
-// @version      1.3.1
+// @version      1.4.1
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
 // @grant        GM_getValue
@@ -17,7 +17,9 @@
     fish: ["Mahar"],
     beforeMinutes: 10,
     sound: true,
-    desktopNotification: true
+    desktopNotification: true,
+    useVisibleFish: true,
+    toasts: true
   };
 
   const state = {
@@ -74,6 +76,8 @@
   }
 
   function toast(msg) {
+    const settings = readSettings();
+    if (!settings.toasts) return;
     ensureStyles();
     let wrap = document.querySelector(".ff14fish-aug-toast-wrap");
     if (!wrap) {
@@ -96,9 +100,11 @@
       el.className = "ff14fish-aug-status";
       document.body.appendChild(el);
     }
+    const settings = readSettings();
     const np = ("Notification" in window) ? Notification.permission : "unsupported";
     const ap = state.audioUnlocked ? "unlocked" : "locked";
-    el.textContent = `FF14Fish Aug | audio: ${ap} | notifications: ${np}`;
+    const mode = settings.useVisibleFish ? "visible" : "manual";
+    el.textContent = `FF14Fish Aug | mode: ${mode} | audio: ${ap} | notifications: ${np}`;
   }
 
   function getAudioContext() {
@@ -272,8 +278,7 @@
 
   function runAlerts() {
     const settings = readSettings();
-    const tracked = new Set((settings.fish || []).map((x) => x.toLowerCase()));
-    if (!tracked.size) return;
+    const manualTracked = new Set((settings.fish || []).map((x) => x.toLowerCase()));
 
     const beforeMs = Math.max(1, Number(settings.beforeMinutes) || 10) * 60000;
     const now = Date.now();
@@ -285,7 +290,7 @@
 
       // Strict guards against aggregate/non-fish rows
       if (!fishName || !fishLink) return;
-      if (!tracked.has(fishName.toLowerCase())) return;
+      if (!settings.useVisibleFish && !manualTracked.has(fishName.toLowerCase())) return;
 
       const start = computeNextStart(current, upcoming);
       if (!start || !Number.isFinite(start)) return;
@@ -314,6 +319,7 @@
       if (value === null) return;
       writeSettings({ ...s, fish: normalizeFishList(value) });
       toast("Tracked fish updated.");
+      renderStatus();
     });
 
     GM_registerMenuCommand("Set alert lead time (minutes)", () => {
@@ -324,6 +330,7 @@
       if (!Number.isFinite(n) || n <= 0) return toast("Invalid number.");
       writeSettings({ ...s, beforeMinutes: n });
       toast(`Alert lead time set to ${n} minute(s).`);
+      renderStatus();
     });
 
     GM_registerMenuCommand("Toggle sound", () => {
@@ -331,6 +338,23 @@
       const next = !s.sound;
       writeSettings({ ...s, sound: next });
       toast(`Sound ${next ? "enabled" : "disabled"}.`);
+      renderStatus();
+    });
+
+    GM_registerMenuCommand("Toggle toasts", () => {
+      const s = readSettings();
+      const next = !s.toasts;
+      writeSettings({ ...s, toasts: next });
+      if (next) toast("Toasts enabled.");
+      renderStatus();
+    });
+
+    GM_registerMenuCommand("Toggle tracking mode (visible/manual)", () => {
+      const s = readSettings();
+      const next = !s.useVisibleFish;
+      writeSettings({ ...s, useVisibleFish: next });
+      toast(`Tracking mode: ${next ? "visible fish on page" : "manual fish list"}.`);
+      renderStatus();
     });
 
     GM_registerMenuCommand("Request desktop notification permission", () => {
@@ -344,8 +368,10 @@
 
     GM_registerMenuCommand("Show alert status", () => {
       renderStatus();
+      const s = readSettings();
       const np = ("Notification" in window) ? Notification.permission : "unsupported";
-      toast(`Audio: ${state.audioUnlocked ? "unlocked" : "locked"}, Notifications: ${np}`);
+      const mode = s.useVisibleFish ? "visible" : "manual";
+      toast(`Mode: ${mode}, Audio: ${state.audioUnlocked ? "unlocked" : "locked"}, Notifications: ${np}`);
     });
 
     GM_registerMenuCommand("Test alert", () => {

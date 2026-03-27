@@ -32,7 +32,7 @@ This was designed for English UI text on the site.
 
 ## Script
 
-Use the latest script from your notes/conversation (version `1.3.1` in this project).
+Use the latest script from your notes/conversation (version `1.4.1` in this project).
 
 If you want to keep everything in one place, use `ff14-carbuncle-plushy-augment.js` from this folder before copying it into Tampermonkey.
 
@@ -42,9 +42,13 @@ Open your userscript manager menu while on the fish tracker page:
 
 - `Set tracked fish (comma separated)`
   - Example: `Mahar, Starscryer, Opabinia`
+- `Toggle tracking mode (visible/manual)`
+  - `visible`: alerts follow fish currently displayed on the page (default)
+  - `manual`: alerts use your saved fish list
 - `Set alert lead time (minutes)`
   - Example: `10`
 - `Toggle sound`
+- `Toggle toasts`
 - `Request desktop notification permission`
 - `Unlock audio now`
 - `Show alert status`
@@ -96,6 +100,17 @@ Open your userscript manager menu while on the fish tracker page:
 - Data stored: your tracked fish names and preferences.
 
 ## Changelog
+
+### 1.4.1
+
+- Added persistent `Toggle toasts` menu option.
+- Toast rendering now respects a saved `toasts` setting.
+
+### 1.4.0
+
+- Added visible tracking mode (enabled by default): alerts can follow fish currently displayed on the page.
+- Added menu command to switch between `visible` and `manual` tracking modes.
+- Status badge and status toast now show current tracking mode.
 
 ### 1.3.1
 
