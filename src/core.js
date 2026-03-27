@@ -39,7 +39,7 @@ export function shouldAlert({ nowMs, startMs, beforeMinutes }) {
 }
 
 export function makeAlertKey({ fishName, startMs, beforeMinutes }) {
-  return `${fishName}|${startMs}|${beforeMinutes}`;
+  return JSON.stringify([fishName, startMs, beforeMinutes]);
 }
 
 export function pruneAlertedMap(alertedMap, nowMs, ttlHours = 6) {
@@ -47,7 +47,6 @@ export function pruneAlertedMap(alertedMap, nowMs, ttlHours = 6) {
   for (const [key, ts] of alertedMap.entries()) {
     if (ts < staleCutoff) alertedMap.delete(key);
   }
-  return alertedMap;
 }
 
 export function desktopEffectiveOn({ desktopNotification, notificationSupported, permission }) {

@@ -57,6 +57,17 @@ describe("computeNextStartFromValues", () => {
     ).toBe(1700000300000);
   });
 
+  it("returns null when closes-row fallback upcoming is not in the future", () => {
+    expect(
+      computeNextStartFromValues({
+        currentText: "closes in 3 minutes",
+        currentVal: 1700000300000,
+        upcomingVal: 1700000000000,
+        upcomingPrevClose: undefined
+      })
+    ).toBeNull();
+  });
+
   it("returns null for unrecognized/invalid data", () => {
     expect(
       computeNextStartFromValues({
@@ -93,6 +104,10 @@ describe("shouldAlert", () => {
     expect(shouldAlert({ nowMs: now, startMs: now + 11 * 60000, beforeMinutes: 10 })).toBe(false);
   });
 
+  it("alerts exactly at the boundary", () => {
+    expect(shouldAlert({ nowMs: now, startMs: now + 10 * 60000, beforeMinutes: 10 })).toBe(true);
+  });
+
   it("defaults invalid lead time to 10 minutes", () => {
     expect(shouldAlert({ nowMs: now, startMs: now + 30000, beforeMinutes: 0 })).toBe(true);
     expect(shouldAlert({ nowMs: now, startMs: now + 9 * 60000, beforeMinutes: 0 })).toBe(true);
@@ -102,7 +117,11 @@ describe("shouldAlert", () => {
 
 describe("makeAlertKey", () => {
   it("builds stable keys", () => {
-    expect(makeAlertKey({ fishName: "Mahar", startMs: 1700, beforeMinutes: 10 })).toBe("Mahar|1700|10");
+    expect(makeAlertKey({ fishName: "Mahar", startMs: 1700, beforeMinutes: 10 })).toBe("[\"Mahar\",1700,10]");
+  });
+
+  it("handles fish names containing separators safely", () => {
+    expect(makeAlertKey({ fishName: "fish|name", startMs: 1700, beforeMinutes: 10 })).toBe("[\"fish|name\",1700,10]");
   });
 });
 
@@ -113,8 +132,9 @@ describe("pruneAlertedMap", () => {
       ["old", now - 7 * 60 * 60 * 1000],
       ["new", now - 60 * 1000]
     ]);
-    pruneAlertedMap(m, now, 6);
+    const ret = pruneAlertedMap(m, now, 6);
     expect([...m.keys()]).toEqual(["new"]);
+    expect(ret).toBeUndefined();
   });
 });
 
@@ -124,5 +144,6 @@ describe("desktopEffectiveOn", () => {
     expect(desktopEffectiveOn({ desktopNotification: true, notificationSupported: true, permission: "denied" })).toBe(false);
     expect(desktopEffectiveOn({ desktopNotification: true, notificationSupported: false, permission: "granted" })).toBe(false);
     expect(desktopEffectiveOn({ desktopNotification: false, notificationSupported: true, permission: "granted" })).toBe(false);
+    expect(desktopEffectiveOn({ desktopNotification: true, notificationSupported: true, permission: "default" })).toBe(false);
   });
 });

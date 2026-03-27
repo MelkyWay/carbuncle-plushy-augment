@@ -1,13 +1,16 @@
 ﻿{
   "name": "carbuncle-plushy-augment",
-  "version": "0.1.0",
+  "version": "1.8.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-userscript.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify": "npm run test && npm run build"
   },
   "devDependencies": {
+    "esbuild": "^0.25.11",
     "vitest": "^3.2.4"
   }
 }
