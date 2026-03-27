@@ -1,52 +1,49 @@
-﻿# FF14 Fish Tracker Augment (Userscript)
+﻿# FF14 Fish Tracker Augment
 
-Adds two quality-of-life features to [FFX|V Fish Tracker](https://ff14fish.carbuncleplushy.com/):
+A small userscript that makes [FFX|V Fish Tracker](https://ff14fish.carbuncleplushy.com/) more convenient for daily fishing.
 
-- Exact availability timestamps shown inline in the table
-- Pre-window alerts for fish you track (toast + optional sound + optional desktop notification)
+## What You Get
 
-This was designed for English UI text on the site.
+- See exact local clock times right in the Availability column (instead of only "in X minutes").
+- Get alerts before fish windows open.
+- Choose how fish are tracked:
+  - `Visible mode` (default): alerts follow fish currently shown on the page.
+  - `Manual mode`: alerts follow your own saved fish list.
+- Choose your alert style:
+  - sound on/off
+  - desktop notifications on/off
+  - toast popups on/off
 
-## Features
+## Quick Start
 
-- Shows exact local date/time next to availability info (`Opens`, `Closes`, `Next`)
-- Alerts a configurable number of minutes before tracked fish become available
-- Uses strict row matching to reduce false positives
-- In-page status badge for audio/notification state
-- Tampermonkey menu actions for quick configuration
+1. Install a userscript manager:
+   - [Tampermonkey](https://www.tampermonkey.net/)
+   - or [Violentmonkey](https://violentmonkey.github.io/)
+2. In your userscript manager, create a new script.
+3. Paste the contents of `ff14-carbuncle-plushy-augment.js`.
+4. Save, then reload <https://ff14fish.carbuncleplushy.com/>.
 
-## Requirements
+## First-Time Setup
 
-- A userscript manager:
-  - [Tampermonkey](https://www.tampermonkey.net/)
-  - or [Violentmonkey](https://violentmonkey.github.io/)
-- A Chromium/Firefox browser with notification support
+Open the userscript menu on the fish tracker page and set:
 
-## Installation
+- `Set alert lead time (minutes)` (example: `10`)
+- `Toggle tracking mode (visible/manual)`
+- `Request desktop notification permission` (if you want browser notifications)
+- `Toggle sound` / `Toggle toasts` as you prefer
 
-1. Install Tampermonkey (or Violentmonkey).
-2. Create a new userscript.
-3. Paste the script code.
-4. Save.
-5. Open or reload: <https://ff14fish.carbuncleplushy.com/>
+## Day-to-Day Use
 
-## Script
+- If you filter/search fish on the site, `visible` mode will alert only for what is currently displayed.
+- If you prefer a fixed target list, switch to `manual` mode and use:
+  - `Set tracked fish (comma separated)`
+- Use `Test alert` anytime to verify your setup.
 
-Use the latest script from your notes/conversation (version `1.4.1` in this project).
-
-If you want to keep everything in one place, use `ff14-carbuncle-plushy-augment.js` from this folder before copying it into Tampermonkey.
-
-## Configuration (Userscript Menu)
-
-Open your userscript manager menu while on the fish tracker page:
+## Menu Options
 
 - `Set tracked fish (comma separated)`
-  - Example: `Mahar, Starscryer, Opabinia`
 - `Toggle tracking mode (visible/manual)`
-  - `visible`: alerts follow fish currently displayed on the page (default)
-  - `manual`: alerts use your saved fish list
 - `Set alert lead time (minutes)`
-  - Example: `10`
 - `Toggle sound`
 - `Toggle toasts`
 - `Request desktop notification permission`
@@ -54,95 +51,41 @@ Open your userscript manager menu while on the fish tracker page:
 - `Show alert status`
 - `Test alert`
 
-## How Alerts Work
-
-- Alert scan runs every 5 seconds.
-- Exact-time inline refresh runs every 30 seconds.
-- Alerts trigger once per fish/window/lead-time combination.
-- If the fish is already inside the alert window when the page loads, you can still get an immediate alert.
-
-## Important Notes
-
-- Language assumption: script parsing is tuned for English strings (`in ...`, `closes in ...`).
-- Time display: timestamps are shown in your browser local timezone.
-- Persistence: settings are saved via `GM_*` storage (or `localStorage` fallback).
-
 ## Troubleshooting
 
-### No sound plays
+### Script installed but not running
 
-- Click once anywhere on the page (browser audio policies require user interaction).
-- Run menu action: `Unlock audio now`.
-- Run `Test alert`.
-- Check status badge at bottom-left (`audio: unlocked`).
+- In Chrome extension settings for Tampermonkey, make sure:
+  - `Autoriser les scripts utilisateur` / `Allow user scripts` is ON
+  - site access is allowed
+- Hard refresh the page (`Ctrl+F5`).
+
+### No sound
+
+- Click once anywhere on the page (browser audio policy).
+- Use `Unlock audio now`.
+- Use `Test alert`.
 
 ### No desktop notifications
 
-- Run menu action: `Request desktop notification permission`.
-- Ensure browser/site notifications are allowed.
-- Check status badge (`notifications: granted`).
+- Use `Request desktop notification permission`.
+- Check your browser/site notification permissions.
 
-### I am not seeing alerts for a fish
+### Too many popups
 
-- Confirm exact fish spelling from the table.
-- Check whether that fish row currently exposes a valid availability timestamp.
-- Increase lead time (e.g., 20 min) and use `Test alert` to verify notification channels.
+- Use `Toggle toasts` to turn toast popups off.
 
-### Times look wrong
+## Notes
 
-- Verify your system/browser timezone.
-- The script displays your local time, not Eorzea time.
+- Designed for the English UI text on FF14 Fish Tracker.
+- Times shown are your local system/browser time.
 
 ## Privacy
 
-- Script runs only on `https://ff14fish.carbuncleplushy.com/*`.
-- No external requests are made by the script.
-- Data stored: your tracked fish names and preferences.
-
-## Changelog
-
-### 1.4.1
-
-- Added persistent `Toggle toasts` menu option.
-- Toast rendering now respects a saved `toasts` setting.
-
-### 1.4.0
-
-- Added visible tracking mode (enabled by default): alerts can follow fish currently displayed on the page.
-- Added menu command to switch between `visible` and `manual` tracking modes.
-- Status badge and status toast now show current tracking mode.
-
-### 1.3.1
-
-- Scoped row scans to the main fish table body (`table tbody`) for lower polling overhead.
-- Renamed script file to `ff14-carbuncle-plushy-augment.js`.
-
-### 1.3.0
-
-- Fixed sound toggle messaging to use explicit next-state logic.
-- Replaced `rowCache` `Map` with `WeakMap` to avoid retaining stale row references.
-- Replaced alert de-dupe `Set` clear behavior with timestamped `Map` + stale pruning.
-- Reused current settings for alert sound path (no redundant settings read in `beep`).
-- Added oscillator/gain disconnect on tone end for cleaner audio node lifecycle.
-- Added conservative fallback in `closes in ...` detection when `data-prevclose` is missing.
-- Improved exact-time label fallback (`Closes` / `Opens` / `Event`).
-
-### 1.2.0
-
-- Added stricter row matching to reduce false positives.
-- Improved alert-window detection logic.
-- Kept performance split (fast alert loop + slower exact-time refresh).
-
-### 1.1.0
-
-- Added audio unlock flow and status badge.
-- Reused a single `AudioContext`.
-- Reduced selector brittleness and improved permission feedback.
-
-### 1.0.0
-
-- Initial release: exact timestamps + pre-window alerts.
+- Runs only on `https://ff14fish.carbuncleplushy.com/*`.
+- Does not send your data anywhere.
+- Saves your preferences locally in userscript storage.
 
 ## Disclaimer
 
-This is an unofficial augment and is not affiliated with Carbuncle Plushy, Square Enix, or the FFX|V Fish Tracker maintainers.
+Unofficial project. Not affiliated with Carbuncle Plushy, Square Enix, or the FFX|V Fish Tracker maintainers.
