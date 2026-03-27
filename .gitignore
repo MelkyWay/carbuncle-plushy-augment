@@ -1,0 +1,13 @@
+﻿# OS/editor noise
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local env
+.env
+.env.*
+
+# Node (if ever used)
+node_modules/
