@@ -74,6 +74,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 - Use `Request desktop notification permission`.
 - Check your browser/site notification permissions.
+- Desktop notifications are permission-gated: if permission is denied/blocked, the script keeps desktop notifications OFF.
 
 ### Too many popups
 
@@ -83,6 +84,15 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 - Designed for the English UI text on FF14 Fish Tracker.
 - Times shown are your local system/browser time.
+
+## Testing
+
+- Install test dependencies:
+  - `npm install`
+- Run unit tests:
+  - `npm test`
+- Watch mode:
+  - `npm run test:watch`
 
 ## Privacy
 
