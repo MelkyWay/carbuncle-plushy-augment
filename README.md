@@ -7,7 +7,7 @@ A small userscript that makes [FFX|V Fish Tracker](https://ff14fish.carbuncleplu
 - See exact local clock times right in the Availability column (instead of only "in X minutes").
 - Get alerts before fish windows open.
 - Choose how fish are tracked:
-  - `Visible mode` (default): alerts follow fish currently shown on the page.
+  - `Auto (website)` (default): alerts follow fish currently shown on the page.
   - `Manual mode`: alerts follow your own saved fish list.
 - Choose your alert style:
   - sound on/off
@@ -28,13 +28,15 @@ A small userscript that makes [FFX|V Fish Tracker](https://ff14fish.carbuncleplu
 Open the userscript menu on the fish tracker page and set:
 
 - `Set alert lead time (minutes)` (example: `10`)
-- `Toggle tracking mode (visible/manual)`
+- `Toggle tracking mode (auto (website)/manual)`
 - `Request desktop notification permission` (if you want browser notifications)
-- `Toggle sound` / `Toggle toasts` as you prefer
+- `Toggle sound` / `Toggle toasts` / `Toggle status badge` as you prefer
+
+Tip: toggle menu entries show current state (for example `currently: ON` / `currently: OFF`).
 
 ## Day-to-Day Use
 
-- If you filter/search fish on the site, `visible` mode will alert only for what is currently displayed.
+- If you filter/search fish on the site, `auto (website)` mode will alert only for what is currently displayed.
 - If you prefer a fixed target list, switch to `manual` mode and use:
   - `Set tracked fish (comma separated)`
 - Use `Test alert` anytime to verify your setup.
@@ -42,10 +44,12 @@ Open the userscript menu on the fish tracker page and set:
 ## Menu Options
 
 - `Set tracked fish (comma separated)`
-- `Toggle tracking mode (visible/manual)`
+- `Toggle tracking mode (currently: AUTO (WEBSITE)/MANUAL)`
 - `Set alert lead time (minutes)`
-- `Toggle sound`
-- `Toggle toasts`
+- `Toggle sound (currently: ON/OFF)`
+- `Toggle toasts (currently: ON/OFF)`
+- `Toggle desktop notifications (currently: ON/OFF)`
+- `Toggle status badge (currently: ON/OFF)`
 - `Request desktop notification permission`
 - `Unlock audio now`
 - `Show alert status`

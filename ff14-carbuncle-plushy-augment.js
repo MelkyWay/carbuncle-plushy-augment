@@ -1,12 +1,15 @@
 ﻿// ==UserScript==
 // @name         FF14 Fish Tracker - Exact Times + Alerts
 // @namespace    carbuncleplushy-augment
-// @version      1.4.1
+// @version      1.6.1
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
+// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js
+// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
 // ==/UserScript==
 
 (() => {
@@ -19,14 +22,16 @@
     sound: true,
     desktopNotification: true,
     useVisibleFish: true,
-    toasts: true
+    toasts: true,
+    statusBadge: true
   };
 
   const state = {
     alerted: new Map(),
     rowCache: new WeakMap(),
     audioCtx: null,
-    audioUnlocked: false
+    audioUnlocked: false,
+    menuIds: []
   };
 
   function hasGM() {
@@ -70,7 +75,7 @@
       .ff14fish-aug-exact { margin-top: 2px; font-size: 11px; opacity: 0.85; line-height: 1.25; }
       .ff14fish-aug-toast-wrap { position: fixed; right: 14px; bottom: 14px; z-index: 99999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
       .ff14fish-aug-toast { background: rgba(20,20,24,.95); color: #fff; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; padding: 8px 10px; min-width: 260px; max-width: 420px; font-size: 13px; box-shadow: 0 8px 22px rgba(0,0,0,.35); }
-      .ff14fish-aug-status { position: fixed; left: 12px; bottom: 12px; z-index: 99999; font-size: 12px; background: rgba(15,15,18,.92); color:#eee; border:1px solid rgba(255,255,255,.2); padding:6px 8px; border-radius:6px; }
+      .ff14fish-aug-status { position: fixed; right: 12px; top: 10vh; z-index: 99999; font-size: 12px; background: rgba(15,15,18,.92); color:#eee; border:1px solid rgba(255,255,255,.2); padding:6px 8px; border-radius:6px; white-space: pre-line; line-height: 1.35; }
     `;
     document.head.appendChild(style);
   }
@@ -94,17 +99,23 @@
 
   function renderStatus() {
     ensureStyles();
+    const settings = readSettings();
     let el = document.querySelector(".ff14fish-aug-status");
+    if (!settings.statusBadge) {
+      if (el) el.remove();
+      return;
+    }
     if (!el) {
       el = document.createElement("div");
       el.className = "ff14fish-aug-status";
       document.body.appendChild(el);
     }
-    const settings = readSettings();
     const np = ("Notification" in window) ? Notification.permission : "unsupported";
-    const ap = state.audioUnlocked ? "unlocked" : "locked";
-    const mode = settings.useVisibleFish ? "visible" : "manual";
-    el.textContent = `FF14Fish Aug | mode: ${mode} | audio: ${ap} | notifications: ${np}`;
+    const ap = settings.sound ? (state.audioUnlocked ? "on/unlocked" : "on/locked") : "off";
+    const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
+    const toasts = settings.toasts ? "on" : "off";
+    const desktop = settings.desktopNotification ? "on" : "off";
+    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nsound: ${ap}\ntoasts: ${toasts}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
   }
 
   function getAudioContext() {
@@ -310,19 +321,42 @@
     });
   }
 
-  function setupMenu() {
+  function refreshMenu() {
     if (typeof GM_registerMenuCommand !== "function") return;
+    if (typeof GM_unregisterMenuCommand === "function") {
+      for (const id of state.menuIds) {
+        try {
+          GM_unregisterMenuCommand(id);
+        } catch {
+          // no-op
+        }
+      }
+      state.menuIds = [];
+    }
 
-    GM_registerMenuCommand("Set tracked fish (comma separated)", () => {
+    const settings = readSettings();
+    const soundLabel = settings.sound ? "ON" : "OFF";
+    const toastsLabel = settings.toasts ? "ON" : "OFF";
+    const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
+    const desktopLabel = settings.desktopNotification ? "ON" : "OFF";
+    const badgeLabel = settings.statusBadge ? "ON" : "OFF";
+
+    const register = (label, handler) => {
+      const id = GM_registerMenuCommand(label, handler);
+      if (id !== undefined) state.menuIds.push(id);
+    };
+
+    register("Set tracked fish (comma separated)", () => {
       const s = readSettings();
       const value = prompt("Fish names (comma separated):", (s.fish || []).join(", "));
       if (value === null) return;
       writeSettings({ ...s, fish: normalizeFishList(value) });
       toast("Tracked fish updated.");
       renderStatus();
+      refreshMenu();
     });
 
-    GM_registerMenuCommand("Set alert lead time (minutes)", () => {
+    register("Set alert lead time (minutes)", () => {
       const s = readSettings();
       const value = prompt("Minutes before availability:", String(s.beforeMinutes ?? 10));
       if (value === null) return;
@@ -331,54 +365,82 @@
       writeSettings({ ...s, beforeMinutes: n });
       toast(`Alert lead time set to ${n} minute(s).`);
       renderStatus();
+      refreshMenu();
     });
 
-    GM_registerMenuCommand("Toggle sound", () => {
+    register(`Toggle sound (currently: ${soundLabel})`, () => {
       const s = readSettings();
       const next = !s.sound;
       writeSettings({ ...s, sound: next });
       toast(`Sound ${next ? "enabled" : "disabled"}.`);
       renderStatus();
+      refreshMenu();
     });
 
-    GM_registerMenuCommand("Toggle toasts", () => {
+    register(`Toggle toasts (currently: ${toastsLabel})`, () => {
       const s = readSettings();
       const next = !s.toasts;
       writeSettings({ ...s, toasts: next });
       if (next) toast("Toasts enabled.");
       renderStatus();
+      refreshMenu();
     });
 
-    GM_registerMenuCommand("Toggle tracking mode (visible/manual)", () => {
+    register(`Toggle tracking mode (currently: ${modeLabel})`, () => {
       const s = readSettings();
       const next = !s.useVisibleFish;
       writeSettings({ ...s, useVisibleFish: next });
-      toast(`Tracking mode: ${next ? "visible fish on page" : "manual fish list"}.`);
+      toast(`Tracking mode: ${next ? "auto (website)" : "manual fish list"}.`);
       renderStatus();
+      refreshMenu();
     });
 
-    GM_registerMenuCommand("Request desktop notification permission", () => {
+    register(`Toggle desktop notifications (currently: ${desktopLabel})`, () => {
+      const s = readSettings();
+      const next = !s.desktopNotification;
+      writeSettings({ ...s, desktopNotification: next });
+      toast(`Desktop notifications ${next ? "enabled" : "disabled"}.`);
+      renderStatus();
+      refreshMenu();
+    });
+
+    register(`Toggle status badge (currently: ${badgeLabel})`, () => {
+      const s = readSettings();
+      const next = !s.statusBadge;
+      writeSettings({ ...s, statusBadge: next });
+      if (next) toast("Status badge enabled.");
+      renderStatus();
+      refreshMenu();
+    });
+
+    register("Request desktop notification permission", () => {
       maybeRequestNotificationPermission();
     });
 
-    GM_registerMenuCommand("Unlock audio now", async () => {
+    register("Unlock audio now", async () => {
       const ok = await unlockAudio();
       toast(ok ? "Audio unlocked." : "Could not unlock audio.");
+      refreshMenu();
     });
 
-    GM_registerMenuCommand("Show alert status", () => {
+    register("Show alert status", () => {
       renderStatus();
       const s = readSettings();
       const np = ("Notification" in window) ? Notification.permission : "unsupported";
-      const mode = s.useVisibleFish ? "visible" : "manual";
-      toast(`Mode: ${mode}, Audio: ${state.audioUnlocked ? "unlocked" : "locked"}, Notifications: ${np}`);
+      const tracking = s.useVisibleFish ? "auto (website)" : "manual";
+      toast(`Tracked: ${tracking}, Sound: ${s.sound ? "on" : "off"}, Toasts: ${s.toasts ? "on" : "off"}, Desktop: ${s.desktopNotification ? "on" : "off"}, Notifications: ${np}`);
     });
 
-    GM_registerMenuCommand("Test alert", () => {
+    register("Test alert", () => {
       toast("Test alert from FF14 fish userscript.");
       beep(readSettings());
       desktopNotify("FF14 fish alert", "Test notification");
     });
+  }
+
+  function setupMenu() {
+    if (typeof GM_registerMenuCommand !== "function") return;
+    refreshMenu();
   }
 
   ensureStyles();
