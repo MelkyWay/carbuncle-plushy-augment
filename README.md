@@ -16,12 +16,30 @@ A small userscript that makes [FFX|V Fish Tracker](https://ff14fish.carbuncleplu
 
 ## Quick Start
 
+### Option A: Install from GitHub URL (recommended)
+
+1. Open this URL in your browser:
+   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-augment/main/ff14-carbuncle-plushy-augment.js`
+2. Tampermonkey/Violentmonkey should prompt to install. Confirm.
+3. Open/reload <https://ff14fish.carbuncleplushy.com/>.
+
+Why this is recommended:
+- easiest updates (no manual copy/paste)
+- works well with userscript update checks
+- keeps your installed script aligned with the repo version
+
+### Option B: Copy/paste install
+
 1. Install a userscript manager:
    - [Tampermonkey](https://www.tampermonkey.net/)
    - or [Violentmonkey](https://violentmonkey.github.io/)
 2. In your userscript manager, create a new script.
 3. Paste the contents of `ff14-carbuncle-plushy-augment.js`.
 4. Save, then reload <https://ff14fish.carbuncleplushy.com/>.
+
+When to use this option:
+- you are testing local edits quickly
+- you do not want your installed script to auto-update from GitHub
 
 ## First-Time Setup
 
