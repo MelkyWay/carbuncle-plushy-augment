@@ -84,7 +84,10 @@
       return typeof GM_getValue === "function" && typeof GM_setValue === "function";
     }
     function readSettings() {
-      if (hasGM()) return { ...DEFAULTS, ...GM_getValue(STORAGE_KEY, {}) || {} };
+      if (hasGM()) {
+        const stored = GM_getValue(STORAGE_KEY);
+        return { ...DEFAULTS, ...stored && typeof stored === "object" ? stored : {} };
+      }
       try {
         return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
       } catch {
@@ -146,13 +149,17 @@
         el.className = "ff14fish-aug-status";
         document.body.appendChild(el);
       }
-      const np = "Notification" in window ? Notification.permission : "unsupported";
-      const ap = settings.sound ? state.audioUnlocked ? "on/unlocked" : "on/locked" : "off";
+      const notificationSupported = "Notification" in globalThis;
+      const np = notificationSupported ? Notification.permission : "unsupported";
+      let ap = "off";
+      if (settings.sound) {
+        ap = state.audioUnlocked ? "on/unlocked" : "on/locked";
+      }
       const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
       const toasts = settings.toasts ? "on" : "off";
       const desktop = desktopEffectiveOn({
         desktopNotification: settings.desktopNotification,
-        notificationSupported: "Notification" in window,
+        notificationSupported,
         permission: np
       }) ? "on" : "off";
       el.textContent = `FFXIV Fish Ping
@@ -163,7 +170,7 @@ desktop: ${desktop}
 notif-perm: ${np}`;
     }
     function getAudioContext() {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
       if (!Ctx) return null;
       if (!state.audioCtx) state.audioCtx = new Ctx();
       return state.audioCtx;
@@ -220,7 +227,7 @@ notif-perm: ${np}`;
       }
     }
     function desktopNotify(settings, title, body) {
-      if (!settings.desktopNotification || !("Notification" in window)) return;
+      if (!settings.desktopNotification || !("Notification" in globalThis)) return;
       if (Notification.permission === "granted") {
         state.hasToastedNotifBlocked = false;
         new Notification(title, { body });
@@ -244,7 +251,7 @@ notif-perm: ${np}`;
         toast("Desktop notifications disabled.");
         return;
       }
-      if (!("Notification" in window)) {
+      if (!("Notification" in globalThis)) {
         writeSettings({ ...s, desktopNotification: false });
         toast("Desktop notifications unsupported in this browser.");
         return;
@@ -319,7 +326,9 @@ notif-perm: ${np}`;
         const parts = [];
         if (curVal) {
           const currentText = (current.textContent || "").toLowerCase();
-          const label = currentText.includes("closes") ? "Closes" : currentText.startsWith("in ") ? "Opens" : "Event";
+          let label = "Event";
+          if (currentText.includes("closes")) label = "Closes";
+          else if (currentText.startsWith("in ")) label = "Opens";
           parts.push(`${label}: ${formatLocalTime(Number(curVal))}`);
         }
         if (upVal) parts.push(`Next: ${formatLocalTime(Number(upVal))}`);
@@ -368,8 +377,8 @@ notif-perm: ${np}`;
       const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
       const desktopLabel = desktopEffectiveOn({
         desktopNotification: settings.desktopNotification,
-        notificationSupported: "Notification" in window,
-        permission: "Notification" in window ? Notification.permission : "unsupported"
+        notificationSupported: "Notification" in globalThis,
+        permission: "Notification" in globalThis ? Notification.permission : "unsupported"
       }) ? "ON" : "OFF";
       const badgeLabel = settings.statusBadge ? "ON" : "OFF";
       const register = (label, handler) => {
@@ -448,11 +457,11 @@ notif-perm: ${np}`;
       register("Show alert status", () => {
         renderStatus();
         const s = readSettings();
-        const np = "Notification" in window ? Notification.permission : "unsupported";
+        const np = "Notification" in globalThis ? Notification.permission : "unsupported";
         const tracking = s.useVisibleFish ? "auto (website)" : "manual";
         const desktop = desktopEffectiveOn({
           desktopNotification: s.desktopNotification,
-          notificationSupported: "Notification" in window,
+          notificationSupported: "Notification" in globalThis,
           permission: np
         }) ? "on" : "off";
         toast(`Tracked: ${tracking}, Sound: ${s.sound ? "on" : "off"}, Toasts: ${s.toasts ? "on" : "off"}, Desktop: ${desktop}, Notifications: ${np}`);
