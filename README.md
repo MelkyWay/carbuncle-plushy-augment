@@ -21,9 +21,10 @@ Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncl
 ### Option A: Install from GitHub URL (recommended)
 
 1. Open this URL in your browser:
-   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js`
+   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js`
 2. Tampermonkey/Violentmonkey should prompt to install. Confirm.
-3. Open/reload <https://ff14fish.carbuncleplushy.com/>.
+3. If Chrome does not auto-open the installer, use Tampermonkey Dashboard -> Utilities -> `Install from URL`, then paste the same URL.
+4. Open/reload <https://ff14fish.carbuncleplushy.com/>.
 
 Why this is recommended:
 - easiest updates (no manual copy/paste)
@@ -117,7 +118,8 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - `src/main.js` (userscript behavior)
   - `src/core.js` (shared pure logic, unit-tested)
 - Generated file:
-  - `ff14-carbuncle-plushy-qol.js` (this is the file to install in userscript managers)
+  - `ff14-carbuncle-plushy-qol.user.js` (install/update URL for userscript managers)
+  - `ff14-carbuncle-plushy-qol.js` (same script, non-`.user.js` artifact)
 - Typical dev loop:
   1. Edit `src/main.js` / `src/core.js`
   2. Run `npm run build`
@@ -143,7 +145,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 - Reusable end-to-end comparison runner:
   - `npm run bench:e2e -- <baseline-script> <candidate-script>`
   - example:
-    - `npm run bench:e2e -- baseline.user.js ff14-carbuncle-plushy-qol.js`
+    - `npm run bench:e2e -- baseline.user.js ff14-carbuncle-plushy-qol.user.js`
 - What the end-to-end runner measures:
   - full userscript bootstrap time
   - warm `runAlerts()` interval cost
@@ -152,7 +154,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - install dependencies with `npm install`
   - if Chromium is missing, run `npx playwright install chromium`
   - you can create a baseline script from any commit/tag with:
-    - `git show <ref>:ff14-carbuncle-plushy-qol.js > baseline.user.js`
+    - `git show <ref>:ff14-carbuncle-plushy-qol.user.js > baseline.user.js`
 
 ## Disclaimer
 
