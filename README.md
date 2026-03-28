@@ -138,6 +138,22 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 - Build userscript from source modules:
   - `npm run build`
 
+## Performance Benchmark
+
+- Reusable end-to-end comparison runner:
+  - `npm run bench:e2e -- <baseline-script> <candidate-script>`
+  - example:
+    - `npm run bench:e2e -- baseline.user.js ff14-carbuncle-plushy-qol.js`
+- What the end-to-end runner measures:
+  - full userscript bootstrap time
+  - warm `runAlerts()` interval cost
+  - warm `updateExactTimes()` interval cost
+- Notes for first run:
+  - install dependencies with `npm install`
+  - if Chromium is missing, run `npx playwright install chromium`
+  - you can create a baseline script from any commit/tag with:
+    - `git show <ref>:ff14-carbuncle-plushy-qol.js > baseline.user.js`
+
 ## Disclaimer
 
 Unofficial project. Not affiliated with Carbuncle Plushy, Square Enix, or the FFX|V Fish Tracker maintainers.
