@@ -24,7 +24,6 @@ import {
     sound: true,
     desktopNotification: true,
     useVisibleFish: true,
-    toasts: true,
     statusBadge: true
   };
 
@@ -97,8 +96,6 @@ import {
   }
 
   function toast(msg) {
-    const settings = readSettings();
-    if (!settings.toasts) return;
     ensureStyles();
     let wrap = document.querySelector(".ff14fish-aug-toast-wrap");
     if (!wrap) {
@@ -133,13 +130,12 @@ import {
       ap = state.audioUnlocked ? "on/unlocked" : "on/locked";
     }
     const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
-    const toasts = settings.toasts ? "on" : "off";
     const desktop = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
       notificationSupported,
       permission: np
     }) ? "on" : "off";
-    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nsound: ${ap}\ntoasts: ${toasts}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
+    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nsound: ${ap}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
   }
 
   function getAudioContext() {
@@ -495,7 +491,6 @@ import {
 
     const settings = readSettings();
     const soundLabel = settings.sound ? "ON" : "OFF";
-    const toastsLabel = settings.toasts ? "ON" : "OFF";
     const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
     const desktopLabel = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
@@ -509,24 +504,14 @@ import {
       if (id !== undefined) state.menuIds.push(id);
     };
 
-    register("Set tracked fish (comma separated)", () => {
-      const s = readSettings();
-      const value = prompt("Fish names (comma separated):", (s.fish || []).join(", "));
-      if (value === null) return;
-      writeSettings({ ...s, fish: normalizeFishList(value) });
-      toast("Tracked fish updated.");
-      renderStatus();
-      if (state.canRefreshMenu) refreshMenu();
-    });
-
-    register("Set alert lead time (minutes)", () => {
+    register("Set alert advance notice (minutes)", () => {
       const s = readSettings();
       const value = prompt("Minutes before availability:", String(s.beforeMinutes ?? 10));
       if (value === null) return;
       const n = Number(value);
       if (!Number.isFinite(n) || n <= 0) return toast("Invalid number.");
       writeSettings({ ...s, beforeMinutes: n });
-      toast(`Alert lead time set to ${n} minute(s).`);
+      toast(`Alert advance notice set to ${n} minute(s).`);
       renderStatus();
       if (state.canRefreshMenu) refreshMenu();
     });
@@ -541,15 +526,6 @@ import {
       if (state.canRefreshMenu) refreshMenu();
     });
 
-    register(`Toggle toasts (currently: ${toastsLabel})`, () => {
-      const s = readSettings();
-      const next = !s.toasts;
-      writeSettings({ ...s, toasts: next });
-      if (next) toast("Toasts enabled.");
-      renderStatus();
-      if (state.canRefreshMenu) refreshMenu();
-    });
-
     register(`Toggle tracking mode (currently: ${modeLabel})`, () => {
       const s = readSettings();
       const next = !s.useVisibleFish;
@@ -558,6 +534,18 @@ import {
       renderStatus();
       if (state.canRefreshMenu) refreshMenu();
     });
+
+    if (!settings.useVisibleFish) {
+      register("Set tracked fish (comma separated)", () => {
+        const s = readSettings();
+        const value = prompt("Fish names (comma separated):", (s.fish || []).join(", "));
+        if (value === null) return;
+        writeSettings({ ...s, fish: normalizeFishList(value) });
+        toast("Tracked fish updated.");
+        renderStatus();
+        if (state.canRefreshMenu) refreshMenu();
+      });
+    }
 
     register(`Toggle desktop notifications (currently: ${desktopLabel})`, () => {
       const s = readSettings();
@@ -568,7 +556,7 @@ import {
       });
     });
 
-    register(`Toggle status badge (currently: ${badgeLabel})`, () => {
+    register(`Display status and options (currently: ${badgeLabel})`, () => {
       const s = readSettings();
       const next = !s.statusBadge;
       writeSettings({ ...s, statusBadge: next });
@@ -585,19 +573,6 @@ import {
       const ok = await unlockAudio();
       toast(ok ? "Audio unlocked." : "Could not unlock audio.");
       if (state.canRefreshMenu) refreshMenu();
-    });
-
-    register("Show alert status", () => {
-      renderStatus();
-      const s = readSettings();
-      const np = ("Notification" in globalThis) ? Notification.permission : "unsupported";
-      const tracking = s.useVisibleFish ? "auto (website)" : "manual";
-      const desktop = desktopEffectiveOn({
-        desktopNotification: s.desktopNotification,
-        notificationSupported: ("Notification" in globalThis),
-        permission: np
-      }) ? "on" : "off";
-      toast(`Tracked: ${tracking}, Sound: ${s.sound ? "on" : "off"}, Toasts: ${s.toasts ? "on" : "off"}, Desktop: ${desktop}, Notifications: ${np}`);
     });
 
     register("Test alert", () => {

@@ -48,10 +48,11 @@ When to use this option:
 
 Open the userscript menu on the fish tracker page and set:
 
-- `Set alert lead time (minutes)` (example: `10`)
+- `Set alert advance notice (minutes)` (example: `10`)
 - `Toggle tracking mode (auto (website)/manual)`
+- `Set tracked fish (comma separated)` (shown only in manual mode)
 - `Request desktop notification permission` (if you want browser notifications)
-- `Toggle sound` / `Toggle toasts` / `Toggle status badge` as you prefer
+- `Toggle sound` / `Display status and options` as you prefer
 
 Tip: toggle menu entries show current state (for example `currently: ON` / `currently: OFF`).
 
@@ -66,14 +67,12 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 - `Set tracked fish (comma separated)`
 - `Toggle tracking mode (currently: AUTO (WEBSITE)/MANUAL)`
-- `Set alert lead time (minutes)`
+- `Set alert advance notice (minutes)`
 - `Toggle sound (currently: ON/OFF)`
-- `Toggle toasts (currently: ON/OFF)`
 - `Toggle desktop notifications (currently: ON/OFF)`
-- `Toggle status badge (currently: ON/OFF)`
+- `Display status and options (currently: ON/OFF)`
 - `Request desktop notification permission`
 - `Unlock audio now`
-- `Show alert status`
 - `Test alert`
 
 ## Troubleshooting
@@ -99,7 +98,8 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 ### Too many popups
 
-- Use `Toggle toasts` to turn toast popups off.
+- Toast popups are always enabled in current versions.
+- If needed, disable desktop notifications and/or sound to reduce interruption.
 
 ## Notes
 
