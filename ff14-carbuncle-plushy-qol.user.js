@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FF14 Carbuncle Plushy QoL
 // @namespace    carbuncleplushy-qol
-// @version      1.8.0
+// @version      1.8.1
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
 // @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
@@ -536,15 +536,6 @@ notif-perm: ${np}`;
         renderStatus();
         if (state.canRefreshMenu) refreshMenu();
       });
-      register(`Toggle sound (currently: ${soundLabel})`, () => {
-        const s = readSettings();
-        const next = !s.sound;
-        writeSettings({ ...s, sound: next });
-        if (next) state.hasToastedAudioLocked = false;
-        toast(`Sound ${next ? "enabled" : "disabled"}.`);
-        renderStatus();
-        if (state.canRefreshMenu) refreshMenu();
-      });
       register(`Toggle tracking mode (currently: ${modeLabel})`, () => {
         const s = readSettings();
         const next = !s.useVisibleFish;
@@ -564,6 +555,15 @@ notif-perm: ${np}`;
           if (state.canRefreshMenu) refreshMenu();
         });
       }
+      register(`Toggle sound (currently: ${soundLabel})`, () => {
+        const s = readSettings();
+        const next = !s.sound;
+        writeSettings({ ...s, sound: next });
+        if (next) state.hasToastedAudioLocked = false;
+        toast(`Sound ${next ? "enabled" : "disabled"}.`);
+        renderStatus();
+        if (state.canRefreshMenu) refreshMenu();
+      });
       register(`Toggle desktop notifications (currently: ${desktopLabel})`, () => {
         const s = readSettings();
         const next = !s.desktopNotification;
