@@ -11,7 +11,7 @@ function printUsage() {
   node scripts/benchmark-e2e.mjs <baseline-script> <candidate-script> [url]
 
 Examples:
-  node scripts/benchmark-e2e.mjs scripts/perf/before-fixed.user.js ff14-carbuncle-plushy-qol.js
+  node scripts/benchmark-e2e.mjs scripts/perf/before-fixed.user.js ff14-carbuncle-plushy-qol.user.js
   node scripts/benchmark-e2e.mjs dist/old.user.js dist/new.user.js https://ff14fish.carbuncleplushy.com/
 `);
 }

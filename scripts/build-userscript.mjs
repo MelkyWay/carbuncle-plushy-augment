@@ -1,5 +1,5 @@
 ﻿import { build } from "esbuild";
-import { copyFile, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 
 const rawPkg = await readFile(new URL("../package.json", import.meta.url), "utf8");
 const pkg = JSON.parse(rawPkg.replace(/^\uFEFF/, ""));
@@ -21,7 +21,7 @@ const header = `// ==UserScript==
 
 await build({
   entryPoints: ["src/main.js"],
-  outfile: "ff14-carbuncle-plushy-qol.js",
+  outfile: "ff14-carbuncle-plushy-qol.user.js",
   bundle: true,
   format: "iife",
   platform: "browser",
@@ -29,6 +29,4 @@ await build({
   banner: { js: header }
 });
 
-await copyFile("ff14-carbuncle-plushy-qol.js", "ff14-carbuncle-plushy-qol.user.js");
-
-console.log(`Built ff14-carbuncle-plushy-qol.js + ff14-carbuncle-plushy-qol.user.js (v${pkg.version})`);
+console.log(`Built ff14-carbuncle-plushy-qol.user.js (v${pkg.version})`);

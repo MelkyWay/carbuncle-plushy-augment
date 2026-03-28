@@ -37,7 +37,7 @@ Why this is recommended:
    - [Tampermonkey](https://www.tampermonkey.net/)
    - or [Violentmonkey](https://violentmonkey.github.io/)
 2. In your userscript manager, create a new script.
-3. Paste the contents of `ff14-carbuncle-plushy-qol.js`.
+3. Paste the contents of `ff14-carbuncle-plushy-qol.user.js`.
 4. Save, then reload <https://ff14fish.carbuncleplushy.com/>.
 
 When to use this option:
@@ -119,7 +119,6 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - `src/core.js` (shared pure logic, unit-tested)
 - Generated file:
   - `ff14-carbuncle-plushy-qol.user.js` (install/update URL for userscript managers)
-  - `ff14-carbuncle-plushy-qol.js` (same script, non-`.user.js` artifact)
 - Typical dev loop:
   1. Edit `src/main.js` / `src/core.js`
   2. Run `npm run build`
