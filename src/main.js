@@ -6,6 +6,13 @@
   pruneAlertedMap,
   desktopEffectiveOn
 } from "./core.js";
+import {
+  makeExactCacheKey,
+  isNodeInTable,
+  isAugmentationNodeLike,
+  markRowMetaDirty,
+  handleStorageEventForSettings
+} from "./main-helpers.js";
 
 (() => {
   "use strict";
@@ -23,7 +30,11 @@
 
   const state = {
     alerted: new Map(),
-    rowCache: new WeakMap(),
+    rowMeta: new WeakMap(),
+    rows: [],
+    rowsDirty: true,
+    settings: null,
+    processTimer: null,
     audioCtx: null,
     audioUnlocked: false,
     hasToastedAudioLocked: false,
@@ -32,11 +43,20 @@
     canRefreshMenu: (typeof GM_unregisterMenuCommand === "function")
   };
 
+  const localTimeFormatter = new Intl.DateTimeFormat([], {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
   function hasGM() {
     return typeof GM_getValue === "function" && typeof GM_setValue === "function";
   }
 
-  function readSettings() {
+  function loadSettings() {
     if (hasGM()) {
       const stored = GM_getValue(STORAGE_KEY);
       return { ...DEFAULTS, ...(stored && typeof stored === "object" ? stored : {}) };
@@ -48,20 +68,19 @@
     }
   }
 
+  function readSettings() {
+    if (!state.settings) state.settings = loadSettings();
+    return state.settings;
+  }
+
   function writeSettings(next) {
-    if (hasGM()) GM_setValue(STORAGE_KEY, next);
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    state.settings = { ...DEFAULTS, ...(next && typeof next === "object" ? next : {}) };
+    if (hasGM()) GM_setValue(STORAGE_KEY, state.settings);
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify(state.settings));
   }
 
   function formatLocalTime(ts) {
-    return new Date(ts).toLocaleString([], {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit"
-    });
+    return localTimeFormatter.format(new Date(ts));
   }
 
   function ensureStyles() {
@@ -259,40 +278,154 @@
     return { fishName, fishLink, current, upcoming, availCell };
   }
 
-  function isRowVisible(row) {
-    return row.offsetParent !== null;
+  function getRowMeta(row) {
+    let meta = state.rowMeta.get(row);
+    if (!meta) {
+      meta = { dirty: true, renderedExactKey: null };
+      state.rowMeta.set(row, meta);
+    }
+    if (!meta.dirty) return meta;
+
+    const parsed = parseRow(row);
+    meta.row = row;
+    meta.fishName = parsed.fishName;
+    meta.fishLink = parsed.fishLink;
+    meta.current = parsed.current;
+    meta.upcoming = parsed.upcoming;
+    meta.availCell = parsed.availCell;
+    meta.currentText = parsed.current?.textContent || "";
+    meta.currentVal = parsed.current?.dataset?.val || "";
+    meta.upcomingVal = parsed.upcoming?.dataset?.val || "";
+    meta.upcomingPrevClose = parsed.upcoming?.dataset?.prevclose || "";
+    meta.renderedExactKey = null;
+    meta.visibilityDirty = true;
+    meta.dirty = false;
+    return meta;
+  }
+
+  function markRowDirty(row) {
+    markRowMetaDirty(state.rowMeta, row);
+  }
+
+  function markRowsDirty() {
+    state.rowsDirty = true;
+  }
+
+  function getRowFromNode(node) {
+    const element = node instanceof Element ? node : node?.parentElement;
+    return element?.closest("tr") || null;
+  }
+
+  function isTableRelatedNode(node) {
+    return isNodeInTable(node);
+  }
+
+  function isAugmentationNode(node) {
+    return isAugmentationNodeLike(node);
+  }
+
+  function scheduleProcess(delay = 150) {
+    if (state.processTimer !== null) return;
+    state.processTimer = setTimeout(() => {
+      state.processTimer = null;
+      updateExactTimes();
+      runAlerts();
+    }, delay);
+  }
+
+  function setupDomObserver() {
+    if (typeof MutationObserver !== "function") return;
+    const root = document.body || document.documentElement;
+    if (!root) return;
+
+    const observer = new MutationObserver((mutations) => {
+      let sawRelevantChange = false;
+
+      mutations.forEach((mutation) => {
+        if (!isTableRelatedNode(mutation.target)) return;
+
+        if (mutation.type === "childList") {
+          const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+          const relevantNodes = changedNodes.filter((node) => !isAugmentationNode(node));
+          if (!relevantNodes.length) return;
+
+          if (mutation.target instanceof Element && mutation.target.closest("table")) {
+            sawRelevantChange = true;
+            markRowDirty(getRowFromNode(mutation.target));
+          }
+
+          if (relevantNodes.some((node) =>
+            node instanceof Element &&
+            (node.matches("tr, tbody, table") || node.querySelector("tr"))
+          )) {
+            sawRelevantChange = true;
+            markRowsDirty();
+          }
+          return;
+        }
+
+        if (isAugmentationNode(mutation.target)) return;
+
+        const row = getRowFromNode(mutation.target);
+        if (row) {
+          sawRelevantChange = true;
+          markRowDirty(row);
+          return;
+        }
+
+        if (mutation.target instanceof Element && mutation.target.matches("tbody, table")) {
+          sawRelevantChange = true;
+          markRowsDirty();
+        }
+      });
+
+      if (sawRelevantChange) scheduleProcess();
+    });
+
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      characterData: false,
+      attributes: true,
+      attributeFilter: ["class", "style", "data-val", "data-prevclose"]
+    });
   }
 
   function getFishRows() {
-    const tbodies = document.querySelectorAll("table tbody");
-    const rows = [];
-    tbodies.forEach((tbody) => {
-      rows.push(...tbody.querySelectorAll("tr"));
-    });
-    return rows;
+    if (!state.rowsDirty) return state.rows;
+    state.rows = Array.from(document.querySelectorAll("table tbody tr"));
+    state.rowsDirty = false;
+    return state.rows;
   }
 
-  function computeNextStart(current, upcoming) {
+  function computeNextStart(rowMeta) {
     return computeNextStartFromValues({
-      currentText: current?.textContent,
-      currentVal: current?.dataset?.val,
-      upcomingVal: upcoming?.dataset?.val,
-      upcomingPrevClose: upcoming?.dataset?.prevclose
+      currentText: rowMeta.currentText,
+      currentVal: rowMeta.currentVal,
+      upcomingVal: rowMeta.upcomingVal,
+      upcomingPrevClose: rowMeta.upcomingPrevClose
     });
+  }
+
+  function isRowVisible(rowMeta, row) {
+    if (rowMeta.visibilityDirty) {
+      rowMeta.visible = row.offsetParent !== null;
+      rowMeta.visibilityDirty = false;
+    }
+    return rowMeta.visible;
   }
 
   function updateExactTimes() {
     const rows = getFishRows();
     rows.forEach((row) => {
-      const { current, upcoming, availCell } = parseRow(row);
+      const meta = getRowMeta(row);
+      const { availCell, currentText, currentVal, upcomingVal } = meta;
       if (!availCell) return;
 
-      const curVal = current?.dataset?.val || "";
-      const upVal = upcoming?.dataset?.val || "";
-      const cacheKey = `${curVal}|${upVal}`;
-      const prev = state.rowCache.get(row);
-      if (prev === cacheKey) return;
-      state.rowCache.set(row, cacheKey);
+      const loweredText = currentText.toLowerCase();
+      const cacheKey = makeExactCacheKey({ currentVal, upcomingVal, currentText });
+      if (meta.renderedExactKey === cacheKey) return;
+      meta.renderedExactKey = cacheKey;
 
       let line = availCell.querySelector(".ff14fish-aug-exact");
       if (!line) {
@@ -302,14 +435,13 @@
       }
 
       const parts = [];
-      if (curVal) {
-        const currentText = (current.textContent || "").toLowerCase();
+      if (currentVal) {
         let label = "Event";
-        if (currentText.includes("closes")) label = "Closes";
-        else if (currentText.startsWith("in ")) label = "Opens";
-        parts.push(`${label}: ${formatLocalTime(Number(curVal))}`);
+        if (loweredText.includes("closes")) label = "Closes";
+        else if (loweredText.startsWith("in ")) label = "Opens";
+        parts.push(`${label}: ${formatLocalTime(Number(currentVal))}`);
       }
-      if (upVal) parts.push(`Next: ${formatLocalTime(Number(upVal))}`);
+      if (upcomingVal) parts.push(`Next: ${formatLocalTime(Number(upcomingVal))}`);
       line.textContent = parts.join(" | ");
     });
   }
@@ -323,13 +455,14 @@
 
     const rows = getFishRows();
     rows.forEach((row) => {
-      const { fishName, fishLink, current, upcoming } = parseRow(row);
+      const meta = getRowMeta(row);
+      const { fishName, fishLink } = meta;
 
       if (!fishName || !fishLink) return;
-      if (settings.useVisibleFish && !isRowVisible(row)) return;
+      if (settings.useVisibleFish && !isRowVisible(meta, row)) return;
       if (!settings.useVisibleFish && !manualTracked.has(fishName.toLowerCase())) return;
 
-      const start = computeNextStart(current, upcoming);
+      const start = computeNextStart(meta);
       if (!start || !Number.isFinite(start)) return;
 
       if (!shouldAlert({ nowMs: now, startMs: start, beforeMinutes: settings.beforeMinutes })) return;
@@ -483,6 +616,17 @@
   ensureStyles();
   setupAudioUnlockHooks();
   setupMenu();
+  setupDomObserver();
+  window.addEventListener("storage", (event) => {
+    const changed = handleStorageEventForSettings({
+      state,
+      eventKey: event.key,
+      storageKey: STORAGE_KEY
+    });
+    if (!changed) return;
+    renderStatus();
+    if (state.canRefreshMenu) refreshMenu();
+  });
   renderStatus();
 
   updateExactTimes();
