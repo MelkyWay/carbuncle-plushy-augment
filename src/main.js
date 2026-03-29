@@ -10,6 +10,7 @@ import {
   makeExactCacheKey,
   isNodeInTable,
   isAugmentationNodeLike,
+  hasTableRowStructureNode,
   markRowMetaDirty,
   handleStorageEventForSettings
 } from "./main-helpers.js";
@@ -318,13 +319,6 @@ import {
 
   function isAugmentationNode(node) {
     return isAugmentationNodeLike(node);
-  }
-
-  function hasTableRowStructureNode(nodes) {
-    return nodes.some((node) =>
-      node instanceof Element &&
-      (node.matches("tr, tbody, table") || node.querySelector("tr"))
-    );
   }
 
   function handleChildListMutation(mutation) {

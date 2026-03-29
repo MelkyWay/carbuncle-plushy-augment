@@ -31,6 +31,16 @@ export function isAugmentationNodeLike(node) {
   return hasClosest(element, ".ff14fish-aug-exact, .ff14fish-aug-toast-wrap, .ff14fish-aug-status");
 }
 
+export function hasTableRowStructureNode(nodes) {
+  if (!Array.isArray(nodes)) return false;
+  return nodes.some((node) => {
+    if (!node || node.nodeType !== 1) return false;
+    const hasRowMatch = typeof node.matches === "function" && node.matches("tr, tbody, table");
+    const hasRowDescendant = typeof node.querySelector === "function" && Boolean(node.querySelector("tr"));
+    return hasRowMatch || hasRowDescendant;
+  });
+}
+
 export function markRowMetaDirty(rowMeta, row) {
   if (!row) return false;
   const meta = rowMeta.get(row);

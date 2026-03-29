@@ -85,6 +85,15 @@
     if (element.id === "ff14fish-aug-style") return true;
     return hasClosest(element, ".ff14fish-aug-exact, .ff14fish-aug-toast-wrap, .ff14fish-aug-status");
   }
+  function hasTableRowStructureNode(nodes) {
+    if (!Array.isArray(nodes)) return false;
+    return nodes.some((node) => {
+      if (!node || node.nodeType !== 1) return false;
+      const hasRowMatch = typeof node.matches === "function" && node.matches("tr, tbody, table");
+      const hasRowDescendant = typeof node.querySelector === "function" && Boolean(node.querySelector("tr"));
+      return hasRowMatch || hasRowDescendant;
+    });
+  }
   function markRowMetaDirty(rowMeta, row) {
     if (!row) return false;
     const meta = rowMeta.get(row);
@@ -372,11 +381,6 @@ notif-perm: ${np}`;
     }
     function isAugmentationNode(node) {
       return isAugmentationNodeLike(node);
-    }
-    function hasTableRowStructureNode(nodes) {
-      return nodes.some(
-        (node) => node instanceof Element && (node.matches("tr, tbody, table") || node.querySelector("tr"))
-      );
     }
     function handleChildListMutation(mutation) {
       const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];

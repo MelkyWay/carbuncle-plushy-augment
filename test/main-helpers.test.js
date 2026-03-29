@@ -4,6 +4,7 @@ import {
   makeExactCacheKey,
   isNodeInTable,
   isAugmentationNodeLike,
+  hasTableRowStructureNode,
   markRowMetaDirty,
   handleStorageEventForSettings
 } from "../src/main-helpers.js";
@@ -83,6 +84,35 @@ describe("mutation filtering helpers", () => {
     expect(isNodeInTable(null)).toBe(false);
     expect(isAugmentationNodeLike({ nodeType: 3, parentElement: null })).toBe(false);
     expect(isNodeInTable({ nodeType: 1 })).toBe(false);
+  });
+
+  it("detects table row structure nodes in mutation payloads", () => {
+    const rowNode = {
+      nodeType: 1,
+      matches(selector) {
+        return selector === "tr, tbody, table";
+      },
+      querySelector() {
+        return null;
+      }
+    };
+    const subtreeNode = {
+      nodeType: 1,
+      matches() {
+        return false;
+      },
+      querySelector(selector) {
+        return selector === "tr" ? { tagName: "TR" } : null;
+      }
+    };
+    expect(hasTableRowStructureNode([rowNode])).toBe(true);
+    expect(hasTableRowStructureNode([subtreeNode])).toBe(true);
+  });
+
+  it("returns false when mutation payload has no row/table structure", () => {
+    expect(hasTableRowStructureNode(null)).toBe(false);
+    expect(hasTableRowStructureNode([{ nodeType: 3 }])).toBe(false);
+    expect(hasTableRowStructureNode([{ nodeType: 1, matches: () => false, querySelector: () => null }])).toBe(false);
   });
 });
 
