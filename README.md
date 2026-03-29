@@ -16,6 +16,18 @@ Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncl
   - desktop notifications on/off
   - toast popups (always enabled)
 
+## UI Preview
+
+### Availability Column (Before / After)
+
+Before:
+
+![Availability before](docs/images/case1_before.png)
+
+After:
+
+![Availability after](docs/images/case1_after.png)
+
 ## Quick Start
 
 ### Option A: Install from GitHub URL (recommended)
