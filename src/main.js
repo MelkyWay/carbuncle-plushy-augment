@@ -320,6 +320,54 @@ import {
     return isAugmentationNodeLike(node);
   }
 
+  function hasTableRowStructureNode(nodes) {
+    return nodes.some((node) =>
+      node instanceof Element &&
+      (node.matches("tr, tbody, table") || node.querySelector("tr"))
+    );
+  }
+
+  function handleChildListMutation(mutation) {
+    const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+    const relevantNodes = changedNodes.filter((node) => !isAugmentationNode(node));
+    if (!relevantNodes.length) return false;
+
+    let changed = false;
+    if (mutation.target instanceof Element && mutation.target.closest("table")) {
+      changed = true;
+      markRowDirty(getRowFromNode(mutation.target));
+    }
+
+    if (hasTableRowStructureNode(relevantNodes)) {
+      changed = true;
+      markRowsDirty();
+    }
+    return changed;
+  }
+
+  function handleNonChildListMutation(mutation) {
+    if (isAugmentationNode(mutation.target)) return false;
+
+    const row = getRowFromNode(mutation.target);
+    if (row) {
+      markRowDirty(row);
+      return true;
+    }
+
+    if (mutation.target instanceof Element && mutation.target.matches("tbody, table")) {
+      markRowsDirty();
+      return true;
+    }
+
+    return false;
+  }
+
+  function mutationIsRelevant(mutation) {
+    if (!isTableRelatedNode(mutation.target)) return false;
+    if (mutation.type === "childList") return handleChildListMutation(mutation);
+    return handleNonChildListMutation(mutation);
+  }
+
   function scheduleProcess(delay = 150) {
     if (state.processTimer !== null) return;
     state.processTimer = setTimeout(() => {
@@ -336,44 +384,10 @@ import {
 
     const observer = new MutationObserver((mutations) => {
       let sawRelevantChange = false;
-
-      mutations.forEach((mutation) => {
-        if (!isTableRelatedNode(mutation.target)) return;
-
-        if (mutation.type === "childList") {
-          const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
-          const relevantNodes = changedNodes.filter((node) => !isAugmentationNode(node));
-          if (!relevantNodes.length) return;
-
-          if (mutation.target instanceof Element && mutation.target.closest("table")) {
-            sawRelevantChange = true;
-            markRowDirty(getRowFromNode(mutation.target));
-          }
-
-          if (relevantNodes.some((node) =>
-            node instanceof Element &&
-            (node.matches("tr, tbody, table") || node.querySelector("tr"))
-          )) {
-            sawRelevantChange = true;
-            markRowsDirty();
-          }
-          return;
-        }
-
-        if (isAugmentationNode(mutation.target)) return;
-
-        const row = getRowFromNode(mutation.target);
-        if (row) {
-          sawRelevantChange = true;
-          markRowDirty(row);
-          return;
-        }
-
-        if (mutation.target instanceof Element && mutation.target.matches("tbody, table")) {
-          sawRelevantChange = true;
-          markRowsDirty();
-        }
-      });
+      for (const mutation of mutations) {
+        if (!mutationIsRelevant(mutation)) continue;
+        sawRelevantChange = true;
+      }
 
       if (sawRelevantChange) scheduleProcess();
     });
@@ -592,7 +606,7 @@ import {
   setupAudioUnlockHooks();
   setupMenu();
   setupDomObserver();
-  window.addEventListener("storage", (event) => {
+  globalThis.addEventListener("storage", (event) => {
     const changed = handleStorageEventForSettings({
       state,
       eventKey: event.key,

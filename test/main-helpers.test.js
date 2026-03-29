@@ -48,6 +48,10 @@ describe("exact-time cache key behavior", () => {
     expect(closes).not.toBe(opens);
     expect(phaseKeyFromCurrentText("closes in 1 minute")).toBe("closes");
   });
+
+  it("uses event phase for unrecognized current text", () => {
+    expect(phaseKeyFromCurrentText("available now")).toBe("event");
+  });
 });
 
 describe("mutation filtering helpers", () => {
@@ -67,6 +71,18 @@ describe("mutation filtering helpers", () => {
     expect(isAugmentationNodeLike(styleNode)).toBe(true);
     expect(isAugmentationNodeLike(augChild)).toBe(true);
     expect(isAugmentationNodeLike(normalNode)).toBe(false);
+  });
+
+  it("handles text/child nodes using parentElement", () => {
+    const tableParent = makeElement({ selectors: { table: true } });
+    const textNode = { nodeType: 3, parentElement: tableParent };
+    expect(isNodeInTable(textNode)).toBe(true);
+  });
+
+  it("returns false for missing or non-element-like nodes", () => {
+    expect(isNodeInTable(null)).toBe(false);
+    expect(isAugmentationNodeLike({ nodeType: 3, parentElement: null })).toBe(false);
+    expect(isNodeInTable({ nodeType: 1 })).toBe(false);
   });
 });
 
