@@ -14,7 +14,7 @@ Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncl
 - Choose your alert style:
   - sound on/off
   - desktop notifications on/off
-  - toast popups on/off
+  - toast popups (always enabled)
 
 ## Quick Start
 
@@ -65,9 +65,9 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 ## Menu Options
 
-- `Set tracked fish (comma separated)`
-- `Toggle tracking mode (currently: AUTO (WEBSITE)/MANUAL)`
 - `Set alert advance notice (minutes)`
+- `Toggle tracking mode (currently: AUTO (WEBSITE)/MANUAL)`
+- `Set tracked fish (comma separated)` (shown only in manual mode)
 - `Toggle sound (currently: ON/OFF)`
 - `Toggle desktop notifications (currently: ON/OFF)`
 - `Display status and options (currently: ON/OFF)`
