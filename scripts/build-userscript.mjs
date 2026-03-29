@@ -10,8 +10,8 @@ const header = `// ==UserScript==
 // @version      ${pkg.version}
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
-// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js
-// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js
+// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
+// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
@@ -21,7 +21,7 @@ const header = `// ==UserScript==
 
 await build({
   entryPoints: ["src/main.js"],
-  outfile: "ff14-carbuncle-plushy-qol.js",
+  outfile: "ff14-carbuncle-plushy-qol.user.js",
   bundle: true,
   format: "iife",
   platform: "browser",
@@ -29,4 +29,4 @@ await build({
   banner: { js: header }
 });
 
-console.log(`Built ff14-carbuncle-plushy-qol.js (v${pkg.version})`);
+console.log(`Built ff14-carbuncle-plushy-qol.user.js (v${pkg.version})`);

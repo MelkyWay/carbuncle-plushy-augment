@@ -21,9 +21,10 @@ Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncl
 ### Option A: Install from GitHub URL (recommended)
 
 1. Open this URL in your browser:
-   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js`
+   - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js`
 2. Tampermonkey/Violentmonkey should prompt to install. Confirm.
-3. Open/reload <https://ff14fish.carbuncleplushy.com/>.
+3. If Chrome does not auto-open the installer, use Tampermonkey Dashboard -> Utilities -> `Install from URL`, then paste the same URL.
+4. Open/reload <https://ff14fish.carbuncleplushy.com/>.
 
 Why this is recommended:
 - easiest updates (no manual copy/paste)
@@ -36,7 +37,7 @@ Why this is recommended:
    - [Tampermonkey](https://www.tampermonkey.net/)
    - or [Violentmonkey](https://violentmonkey.github.io/)
 2. In your userscript manager, create a new script.
-3. Paste the contents of `ff14-carbuncle-plushy-qol.js`.
+3. Paste the contents of `ff14-carbuncle-plushy-qol.user.js`.
 4. Save, then reload <https://ff14fish.carbuncleplushy.com/>.
 
 When to use this option:
@@ -47,10 +48,11 @@ When to use this option:
 
 Open the userscript menu on the fish tracker page and set:
 
-- `Set alert lead time (minutes)` (example: `10`)
+- `Set alert advance notice (minutes)` (example: `10`)
 - `Toggle tracking mode (auto (website)/manual)`
+- `Set tracked fish (comma separated)` (shown only in manual mode)
 - `Request desktop notification permission` (if you want browser notifications)
-- `Toggle sound` / `Toggle toasts` / `Toggle status badge` as you prefer
+- `Toggle sound` / `Display status and options` as you prefer
 
 Tip: toggle menu entries show current state (for example `currently: ON` / `currently: OFF`).
 
@@ -65,14 +67,12 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 - `Set tracked fish (comma separated)`
 - `Toggle tracking mode (currently: AUTO (WEBSITE)/MANUAL)`
-- `Set alert lead time (minutes)`
+- `Set alert advance notice (minutes)`
 - `Toggle sound (currently: ON/OFF)`
-- `Toggle toasts (currently: ON/OFF)`
 - `Toggle desktop notifications (currently: ON/OFF)`
-- `Toggle status badge (currently: ON/OFF)`
+- `Display status and options (currently: ON/OFF)`
 - `Request desktop notification permission`
 - `Unlock audio now`
-- `Show alert status`
 - `Test alert`
 
 ## Troubleshooting
@@ -98,7 +98,8 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 ### Too many popups
 
-- Use `Toggle toasts` to turn toast popups off.
+- Toast popups are always enabled in current versions.
+- If needed, disable desktop notifications and/or sound to reduce interruption.
 
 ## Notes
 
@@ -117,7 +118,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - `src/main.js` (userscript behavior)
   - `src/core.js` (shared pure logic, unit-tested)
 - Generated file:
-  - `ff14-carbuncle-plushy-qol.js` (this is the file to install in userscript managers)
+  - `ff14-carbuncle-plushy-qol.user.js` (install/update URL for userscript managers)
 - Typical dev loop:
   1. Edit `src/main.js` / `src/core.js`
   2. Run `npm run build`
@@ -137,6 +138,22 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
   - `npm run test:watch`
 - Build userscript from source modules:
   - `npm run build`
+
+## Performance Benchmark
+
+- Reusable end-to-end comparison runner:
+  - `npm run bench:e2e -- <baseline-script> <candidate-script>`
+  - example:
+    - `npm run bench:e2e -- baseline.user.js ff14-carbuncle-plushy-qol.user.js`
+- What the end-to-end runner measures:
+  - full userscript bootstrap time
+  - warm `runAlerts()` interval cost
+  - warm `updateExactTimes()` interval cost
+- Notes for first run:
+  - install dependencies with `npm install`
+  - if Chromium is missing, run `npx playwright install chromium`
+  - you can create a baseline script from any commit/tag with:
+    - `git show <ref>:ff14-carbuncle-plushy-qol.user.js > baseline.user.js`
 
 ## Disclaimer
 

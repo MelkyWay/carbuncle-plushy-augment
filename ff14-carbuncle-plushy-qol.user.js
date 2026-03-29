@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         FF14 Carbuncle Plushy QoL
 // @namespace    carbuncleplushy-qol
-// @version      1.8.0
+// @version      1.8.1
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
-// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js
-// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.js
+// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
+// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
@@ -57,6 +57,48 @@
     return Boolean(desktopNotification && notificationSupported && permission === "granted");
   }
 
+  // src/main-helpers.js
+  function toElement(node) {
+    if (!node) return null;
+    if (node.nodeType === 1) return node;
+    return node.parentElement || null;
+  }
+  function hasClosest(element, selector) {
+    return Boolean(element && typeof element.closest === "function" && element.closest(selector));
+  }
+  function phaseKeyFromCurrentText(currentText) {
+    const loweredText = String(currentText || "").toLowerCase();
+    if (loweredText.includes("closes")) return "closes";
+    if (loweredText.startsWith("in ")) return "opens";
+    return "event";
+  }
+  function makeExactCacheKey({ currentVal, upcomingVal, currentText }) {
+    return `${currentVal}|${upcomingVal}|${phaseKeyFromCurrentText(currentText)}`;
+  }
+  function isNodeInTable(node) {
+    const element = toElement(node);
+    return hasClosest(element, "table");
+  }
+  function isAugmentationNodeLike(node) {
+    const element = toElement(node);
+    if (!element) return false;
+    if (element.id === "ff14fish-aug-style") return true;
+    return hasClosest(element, ".ff14fish-aug-exact, .ff14fish-aug-toast-wrap, .ff14fish-aug-status");
+  }
+  function markRowMetaDirty(rowMeta, row) {
+    if (!row) return false;
+    const meta = rowMeta.get(row);
+    if (!meta) return false;
+    meta.dirty = true;
+    meta.visibilityDirty = true;
+    return true;
+  }
+  function handleStorageEventForSettings({ state, eventKey, storageKey }) {
+    if (eventKey !== storageKey) return false;
+    state.settings = null;
+    return true;
+  }
+
   // src/main.js
   (() => {
     "use strict";
@@ -67,12 +109,15 @@
       sound: true,
       desktopNotification: true,
       useVisibleFish: true,
-      toasts: true,
       statusBadge: true
     };
     const state = {
       alerted: /* @__PURE__ */ new Map(),
-      rowCache: /* @__PURE__ */ new WeakMap(),
+      rowMeta: /* @__PURE__ */ new WeakMap(),
+      rows: [],
+      rowsDirty: true,
+      settings: null,
+      processTimer: null,
       audioCtx: null,
       audioUnlocked: false,
       hasToastedAudioLocked: false,
@@ -80,10 +125,18 @@
       menuIds: [],
       canRefreshMenu: typeof GM_unregisterMenuCommand === "function"
     };
+    const localTimeFormatter = new Intl.DateTimeFormat([], {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
     function hasGM() {
       return typeof GM_getValue === "function" && typeof GM_setValue === "function";
     }
-    function readSettings() {
+    function loadSettings() {
       if (hasGM()) {
         const stored = GM_getValue(STORAGE_KEY);
         return { ...DEFAULTS, ...stored && typeof stored === "object" ? stored : {} };
@@ -94,19 +147,17 @@
         return { ...DEFAULTS };
       }
     }
+    function readSettings() {
+      if (!state.settings) state.settings = loadSettings();
+      return state.settings;
+    }
     function writeSettings(next) {
-      if (hasGM()) GM_setValue(STORAGE_KEY, next);
-      else localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      state.settings = { ...DEFAULTS, ...next && typeof next === "object" ? next : {} };
+      if (hasGM()) GM_setValue(STORAGE_KEY, state.settings);
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify(state.settings));
     }
     function formatLocalTime(ts) {
-      return new Date(ts).toLocaleString([], {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-      });
+      return localTimeFormatter.format(new Date(ts));
     }
     function ensureStyles() {
       if (document.getElementById("ff14fish-aug-style")) return;
@@ -121,8 +172,6 @@
       document.head.appendChild(style);
     }
     function toast(msg) {
-      const settings = readSettings();
-      if (!settings.toasts) return;
       ensureStyles();
       let wrap = document.querySelector(".ff14fish-aug-toast-wrap");
       if (!wrap) {
@@ -156,7 +205,6 @@
         ap = state.audioUnlocked ? "on/unlocked" : "on/locked";
       }
       const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
-      const toasts = settings.toasts ? "on" : "off";
       const desktop = desktopEffectiveOn({
         desktopNotification: settings.desktopNotification,
         notificationSupported,
@@ -165,7 +213,6 @@
       el.textContent = `FFXIV Fish Ping
 tracked: ${tracking}
 sound: ${ap}
-toasts: ${toasts}
 desktop: ${desktop}
 notif-perm: ${np}`;
     }
@@ -287,36 +334,130 @@ notif-perm: ${np}`;
       const availCell = row.querySelector("td.fish-availability") || current?.closest("td") || upcoming?.closest("td") || null;
       return { fishName, fishLink, current, upcoming, availCell };
     }
-    function isRowVisible(row) {
-      return row.offsetParent !== null;
+    function getRowMeta(row) {
+      let meta = state.rowMeta.get(row);
+      if (!meta) {
+        meta = { dirty: true, renderedExactKey: null };
+        state.rowMeta.set(row, meta);
+      }
+      if (!meta.dirty) return meta;
+      const parsed = parseRow(row);
+      meta.row = row;
+      meta.fishName = parsed.fishName;
+      meta.fishLink = parsed.fishLink;
+      meta.current = parsed.current;
+      meta.upcoming = parsed.upcoming;
+      meta.availCell = parsed.availCell;
+      meta.currentText = parsed.current?.textContent || "";
+      meta.currentVal = parsed.current?.dataset?.val || "";
+      meta.upcomingVal = parsed.upcoming?.dataset?.val || "";
+      meta.upcomingPrevClose = parsed.upcoming?.dataset?.prevclose || "";
+      meta.renderedExactKey = null;
+      meta.visibilityDirty = true;
+      meta.dirty = false;
+      return meta;
+    }
+    function markRowDirty(row) {
+      markRowMetaDirty(state.rowMeta, row);
+    }
+    function markRowsDirty() {
+      state.rowsDirty = true;
+    }
+    function getRowFromNode(node) {
+      const element = node instanceof Element ? node : node?.parentElement;
+      return element?.closest("tr") || null;
+    }
+    function isTableRelatedNode(node) {
+      return isNodeInTable(node);
+    }
+    function isAugmentationNode(node) {
+      return isAugmentationNodeLike(node);
+    }
+    function scheduleProcess(delay = 150) {
+      if (state.processTimer !== null) return;
+      state.processTimer = setTimeout(() => {
+        state.processTimer = null;
+        updateExactTimes();
+        runAlerts();
+      }, delay);
+    }
+    function setupDomObserver() {
+      if (typeof MutationObserver !== "function") return;
+      const root = document.body || document.documentElement;
+      if (!root) return;
+      const observer = new MutationObserver((mutations) => {
+        let sawRelevantChange = false;
+        mutations.forEach((mutation) => {
+          if (!isTableRelatedNode(mutation.target)) return;
+          if (mutation.type === "childList") {
+            const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+            const relevantNodes = changedNodes.filter((node) => !isAugmentationNode(node));
+            if (!relevantNodes.length) return;
+            if (mutation.target instanceof Element && mutation.target.closest("table")) {
+              sawRelevantChange = true;
+              markRowDirty(getRowFromNode(mutation.target));
+            }
+            if (relevantNodes.some(
+              (node) => node instanceof Element && (node.matches("tr, tbody, table") || node.querySelector("tr"))
+            )) {
+              sawRelevantChange = true;
+              markRowsDirty();
+            }
+            return;
+          }
+          if (isAugmentationNode(mutation.target)) return;
+          const row = getRowFromNode(mutation.target);
+          if (row) {
+            sawRelevantChange = true;
+            markRowDirty(row);
+            return;
+          }
+          if (mutation.target instanceof Element && mutation.target.matches("tbody, table")) {
+            sawRelevantChange = true;
+            markRowsDirty();
+          }
+        });
+        if (sawRelevantChange) scheduleProcess();
+      });
+      observer.observe(root, {
+        subtree: true,
+        childList: true,
+        characterData: false,
+        attributes: true,
+        attributeFilter: ["class", "style", "data-val", "data-prevclose"]
+      });
     }
     function getFishRows() {
-      const tbodies = document.querySelectorAll("table tbody");
-      const rows = [];
-      tbodies.forEach((tbody) => {
-        rows.push(...tbody.querySelectorAll("tr"));
-      });
-      return rows;
+      if (!state.rowsDirty) return state.rows;
+      state.rows = Array.from(document.querySelectorAll("table tbody tr"));
+      state.rowsDirty = false;
+      return state.rows;
     }
-    function computeNextStart(current, upcoming) {
+    function computeNextStart(rowMeta) {
       return computeNextStartFromValues({
-        currentText: current?.textContent,
-        currentVal: current?.dataset?.val,
-        upcomingVal: upcoming?.dataset?.val,
-        upcomingPrevClose: upcoming?.dataset?.prevclose
+        currentText: rowMeta.currentText,
+        currentVal: rowMeta.currentVal,
+        upcomingVal: rowMeta.upcomingVal,
+        upcomingPrevClose: rowMeta.upcomingPrevClose
       });
+    }
+    function isRowVisible(rowMeta, row) {
+      if (rowMeta.visibilityDirty) {
+        rowMeta.visible = row.offsetParent !== null;
+        rowMeta.visibilityDirty = false;
+      }
+      return rowMeta.visible;
     }
     function updateExactTimes() {
       const rows = getFishRows();
       rows.forEach((row) => {
-        const { current, upcoming, availCell } = parseRow(row);
+        const meta = getRowMeta(row);
+        const { availCell, currentText, currentVal, upcomingVal } = meta;
         if (!availCell) return;
-        const curVal = current?.dataset?.val || "";
-        const upVal = upcoming?.dataset?.val || "";
-        const cacheKey = `${curVal}|${upVal}`;
-        const prev = state.rowCache.get(row);
-        if (prev === cacheKey) return;
-        state.rowCache.set(row, cacheKey);
+        const loweredText = currentText.toLowerCase();
+        const cacheKey = makeExactCacheKey({ currentVal, upcomingVal, currentText });
+        if (meta.renderedExactKey === cacheKey) return;
+        meta.renderedExactKey = cacheKey;
         let line = availCell.querySelector(".ff14fish-aug-exact");
         if (!line) {
           line = document.createElement("div");
@@ -324,14 +465,13 @@ notif-perm: ${np}`;
           availCell.appendChild(line);
         }
         const parts = [];
-        if (curVal) {
-          const currentText = (current.textContent || "").toLowerCase();
+        if (currentVal) {
           let label = "Event";
-          if (currentText.includes("closes")) label = "Closes";
-          else if (currentText.startsWith("in ")) label = "Opens";
-          parts.push(`${label}: ${formatLocalTime(Number(curVal))}`);
+          if (loweredText.includes("closes")) label = "Closes";
+          else if (loweredText.startsWith("in ")) label = "Opens";
+          parts.push(`${label}: ${formatLocalTime(Number(currentVal))}`);
         }
-        if (upVal) parts.push(`Next: ${formatLocalTime(Number(upVal))}`);
+        if (upcomingVal) parts.push(`Next: ${formatLocalTime(Number(upcomingVal))}`);
         line.textContent = parts.join(" | ");
       });
     }
@@ -342,11 +482,12 @@ notif-perm: ${np}`;
       pruneAlertedMap(state.alerted, now, 6);
       const rows = getFishRows();
       rows.forEach((row) => {
-        const { fishName, fishLink, current, upcoming } = parseRow(row);
+        const meta = getRowMeta(row);
+        const { fishName, fishLink } = meta;
         if (!fishName || !fishLink) return;
-        if (settings.useVisibleFish && !isRowVisible(row)) return;
+        if (settings.useVisibleFish && !isRowVisible(meta, row)) return;
         if (!settings.useVisibleFish && !manualTracked.has(fishName.toLowerCase())) return;
-        const start = computeNextStart(current, upcoming);
+        const start = computeNextStart(meta);
         if (!start || !Number.isFinite(start)) return;
         if (!shouldAlert({ nowMs: now, startMs: start, beforeMinutes: settings.beforeMinutes })) return;
         const key = makeAlertKey({ fishName, startMs: start, beforeMinutes: settings.beforeMinutes });
@@ -373,7 +514,6 @@ notif-perm: ${np}`;
       }
       const settings = readSettings();
       const soundLabel = settings.sound ? "ON" : "OFF";
-      const toastsLabel = settings.toasts ? "ON" : "OFF";
       const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
       const desktopLabel = desktopEffectiveOn({
         desktopNotification: settings.desktopNotification,
@@ -385,40 +525,14 @@ notif-perm: ${np}`;
         const id = GM_registerMenuCommand(label, handler);
         if (id !== void 0) state.menuIds.push(id);
       };
-      register("Set tracked fish (comma separated)", () => {
-        const s = readSettings();
-        const value = prompt("Fish names (comma separated):", (s.fish || []).join(", "));
-        if (value === null) return;
-        writeSettings({ ...s, fish: normalizeFishList(value) });
-        toast("Tracked fish updated.");
-        renderStatus();
-        if (state.canRefreshMenu) refreshMenu();
-      });
-      register("Set alert lead time (minutes)", () => {
+      register("Set alert advance notice (minutes)", () => {
         const s = readSettings();
         const value = prompt("Minutes before availability:", String(s.beforeMinutes ?? 10));
         if (value === null) return;
         const n = Number(value);
         if (!Number.isFinite(n) || n <= 0) return toast("Invalid number.");
         writeSettings({ ...s, beforeMinutes: n });
-        toast(`Alert lead time set to ${n} minute(s).`);
-        renderStatus();
-        if (state.canRefreshMenu) refreshMenu();
-      });
-      register(`Toggle sound (currently: ${soundLabel})`, () => {
-        const s = readSettings();
-        const next = !s.sound;
-        writeSettings({ ...s, sound: next });
-        if (next) state.hasToastedAudioLocked = false;
-        toast(`Sound ${next ? "enabled" : "disabled"}.`);
-        renderStatus();
-        if (state.canRefreshMenu) refreshMenu();
-      });
-      register(`Toggle toasts (currently: ${toastsLabel})`, () => {
-        const s = readSettings();
-        const next = !s.toasts;
-        writeSettings({ ...s, toasts: next });
-        if (next) toast("Toasts enabled.");
+        toast(`Alert advance notice set to ${n} minute(s).`);
         renderStatus();
         if (state.canRefreshMenu) refreshMenu();
       });
@@ -430,6 +544,26 @@ notif-perm: ${np}`;
         renderStatus();
         if (state.canRefreshMenu) refreshMenu();
       });
+      if (!settings.useVisibleFish) {
+        register("Set tracked fish (comma separated)", () => {
+          const s = readSettings();
+          const value = prompt("Fish names (comma separated):", (s.fish || []).join(", "));
+          if (value === null) return;
+          writeSettings({ ...s, fish: normalizeFishList(value) });
+          toast("Tracked fish updated.");
+          renderStatus();
+          if (state.canRefreshMenu) refreshMenu();
+        });
+      }
+      register(`Toggle sound (currently: ${soundLabel})`, () => {
+        const s = readSettings();
+        const next = !s.sound;
+        writeSettings({ ...s, sound: next });
+        if (next) state.hasToastedAudioLocked = false;
+        toast(`Sound ${next ? "enabled" : "disabled"}.`);
+        renderStatus();
+        if (state.canRefreshMenu) refreshMenu();
+      });
       register(`Toggle desktop notifications (currently: ${desktopLabel})`, () => {
         const s = readSettings();
         const next = !s.desktopNotification;
@@ -438,7 +572,7 @@ notif-perm: ${np}`;
           if (state.canRefreshMenu) refreshMenu();
         });
       });
-      register(`Toggle status badge (currently: ${badgeLabel})`, () => {
+      register(`Display status and options (currently: ${badgeLabel})`, () => {
         const s = readSettings();
         const next = !s.statusBadge;
         writeSettings({ ...s, statusBadge: next });
@@ -454,18 +588,6 @@ notif-perm: ${np}`;
         toast(ok ? "Audio unlocked." : "Could not unlock audio.");
         if (state.canRefreshMenu) refreshMenu();
       });
-      register("Show alert status", () => {
-        renderStatus();
-        const s = readSettings();
-        const np = "Notification" in globalThis ? Notification.permission : "unsupported";
-        const tracking = s.useVisibleFish ? "auto (website)" : "manual";
-        const desktop = desktopEffectiveOn({
-          desktopNotification: s.desktopNotification,
-          notificationSupported: "Notification" in globalThis,
-          permission: np
-        }) ? "on" : "off";
-        toast(`Tracked: ${tracking}, Sound: ${s.sound ? "on" : "off"}, Toasts: ${s.toasts ? "on" : "off"}, Desktop: ${desktop}, Notifications: ${np}`);
-      });
       register("Test alert", () => {
         const s = readSettings();
         toast("Test alert from FF14 fish userscript.");
@@ -480,6 +602,17 @@ notif-perm: ${np}`;
     ensureStyles();
     setupAudioUnlockHooks();
     setupMenu();
+    setupDomObserver();
+    window.addEventListener("storage", (event) => {
+      const changed = handleStorageEventForSettings({
+        state,
+        eventKey: event.key,
+        storageKey: STORAGE_KEY
+      });
+      if (!changed) return;
+      renderStatus();
+      if (state.canRefreshMenu) refreshMenu();
+    });
     renderStatus();
     updateExactTimes();
     runAlerts();
