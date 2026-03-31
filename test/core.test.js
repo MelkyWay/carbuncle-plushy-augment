@@ -5,7 +5,8 @@ import {
   shouldAlert,
   makeAlertKey,
   pruneAlertedMap,
-  desktopEffectiveOn
+  desktopEffectiveOn,
+  prerequisiteLinkedWithinWindow
 } from "../src/core.js";
 
 describe("normalizeFishList", () => {
@@ -145,5 +146,31 @@ describe("desktopEffectiveOn", () => {
     expect(desktopEffectiveOn({ desktopNotification: true, notificationSupported: false, permission: "granted" })).toBe(false);
     expect(desktopEffectiveOn({ desktopNotification: false, notificationSupported: true, permission: "granted" })).toBe(false);
     expect(desktopEffectiveOn({ desktopNotification: true, notificationSupported: true, permission: "default" })).toBe(false);
+  });
+});
+
+describe("prerequisiteLinkedWithinWindow", () => {
+  it("allows linked fish windows within 90 minutes after prerequisite", () => {
+    expect(prerequisiteLinkedWithinWindow({
+      prerequisiteStartMs: 1000,
+      linkedFishStartMs: 1000 + (90 * 60000),
+      maxMinutes: 90
+    })).toBe(true);
+  });
+
+  it("rejects linked fish windows outside the 90-minute forward window", () => {
+    expect(prerequisiteLinkedWithinWindow({
+      prerequisiteStartMs: 1000,
+      linkedFishStartMs: 1000 + (91 * 60000),
+      maxMinutes: 90
+    })).toBe(false);
+  });
+
+  it("rejects linked fish windows that start before the prerequisite", () => {
+    expect(prerequisiteLinkedWithinWindow({
+      prerequisiteStartMs: 1000 + 60000,
+      linkedFishStartMs: 1000,
+      maxMinutes: 90
+    })).toBe(false);
   });
 });

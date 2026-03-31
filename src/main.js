@@ -4,7 +4,8 @@
   shouldAlert,
   makeAlertKey,
   pruneAlertedMap,
-  desktopEffectiveOn
+  desktopEffectiveOn,
+  prerequisiteLinkedWithinWindow
 } from "./core.js";
 import {
   makeExactCacheKey,
@@ -30,6 +31,7 @@ import {
     desktopNotification: true,
     useVisibleFish: true,
     prerequisiteAlerts: true,
+    prerequisiteLinkWindowMinutes: 90,
     statusBadge: true
   };
 
@@ -137,12 +139,13 @@ import {
     }
     const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
     const prereq = settings.prerequisiteAlerts ? "on" : "off";
+    const prereqWindow = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
     const desktop = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
       notificationSupported,
       permission: np
     }) ? "on" : "off";
-    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nprereq alerts: ${prereq}\nsound: ${ap}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
+    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nprereq alerts: ${prereq}\nprereq window: ${prereqWindow}m\nsound: ${ap}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
   }
 
   function getAudioContext() {
@@ -461,13 +464,24 @@ import {
   function runAlerts() {
     const settings = readSettings();
     const manualTracked = new Set((settings.fish || []).map((x) => x.toLowerCase()));
+    const prerequisiteWindowMinutes = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
 
     const now = Date.now();
     pruneAlertedMap(state.alerted, now, 6);
 
     const rows = getFishRows();
+    const contexts = [];
+    let lastMainStart = null;
     rows.forEach((row) => {
       const meta = getRowMeta(row);
+      const start = computeNextStart(meta);
+      const linkedMainStart = meta.isPrerequisite ? lastMainStart : null;
+      if (!meta.isPrerequisite) lastMainStart = start;
+      contexts.push({ row, meta, start, linkedMainStart });
+    });
+
+    contexts.forEach((ctx) => {
+      const { row, meta, start, linkedMainStart } = ctx;
       const { fishName, fishLink } = meta;
 
       if (!fishName || !fishLink) return;
@@ -475,8 +489,12 @@ import {
       if (settings.useVisibleFish && !isRowVisible(meta, row)) return;
       if (!settings.useVisibleFish && !manualTracked.has(fishName.toLowerCase())) return;
 
-      const start = computeNextStart(meta);
       if (!start || !Number.isFinite(start)) return;
+      if (meta.isPrerequisite && !prerequisiteLinkedWithinWindow({
+        prerequisiteStartMs: start,
+        linkedFishStartMs: linkedMainStart,
+        maxMinutes: prerequisiteWindowMinutes
+      })) return;
 
       if (!shouldAlert({ nowMs: now, startMs: start, beforeMinutes: settings.beforeMinutes })) return;
 
@@ -509,6 +527,7 @@ import {
     const settings = readSettings();
     const soundLabel = settings.sound ? "ON" : "OFF";
     const prereqLabel = settings.prerequisiteAlerts ? "ON" : "OFF";
+    const prereqWindowLabel = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
     const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
     const desktopLabel = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
@@ -570,6 +589,21 @@ import {
       const next = !s.prerequisiteAlerts;
       writeSettings({ ...s, prerequisiteAlerts: next });
       toast(`Prerequisite fish alerts ${next ? "enabled" : "disabled"}.`);
+      renderStatus();
+      if (state.canRefreshMenu) refreshMenu();
+    });
+
+    register(`Set prerequisite target window (minutes, currently: ${prereqWindowLabel})`, () => {
+      const s = readSettings();
+      const value = prompt(
+        "Linked target fish window in minutes (prerequisite -> target):",
+        String(s.prerequisiteLinkWindowMinutes ?? 90)
+      );
+      if (value === null) return;
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return toast("Invalid number.");
+      writeSettings({ ...s, prerequisiteLinkWindowMinutes: n });
+      toast(`Prerequisite target window set to ${n} minute(s).`);
       renderStatus();
       if (state.canRefreshMenu) refreshMenu();
     });
@@ -637,3 +671,5 @@ import {
   setInterval(runAlerts, 5000);
   setInterval(updateExactTimes, 30000);
 })();
+
+

@@ -52,3 +52,17 @@ export function pruneAlertedMap(alertedMap, nowMs, ttlHours = 6) {
 export function desktopEffectiveOn({ desktopNotification, notificationSupported, permission }) {
   return Boolean(desktopNotification && notificationSupported && permission === "granted");
 }
+
+export function prerequisiteLinkedWithinWindow({
+  prerequisiteStartMs,
+  linkedFishStartMs,
+  maxMinutes = 90
+}) {
+  const prerequisiteStart = Number(prerequisiteStartMs);
+  const linkedStart = Number(linkedFishStartMs);
+  if (!Number.isFinite(prerequisiteStart) || !Number.isFinite(linkedStart)) return false;
+
+  const maxGapMs = Math.max(1, Number(maxMinutes) || 90) * 60000;
+  const gap = linkedStart - prerequisiteStart;
+  return gap >= 0 && gap <= maxGapMs;
+}

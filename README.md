@@ -13,6 +13,9 @@ Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncl
   - `Manual mode`: alerts follow your own saved fish list.
 - Choose your alert style:
   - prerequisite fish alerts on/off (the extra fish rows used for Fisher's Intuition chains)
+  - choose how strict prerequisite alerts should be with `Set prerequisite target window (minutes)` (default: `90`)
+    - this means: a prerequisite fish alert is shown only if its linked target fish opens within that many minutes after it
+    - example with `90`: if prerequisite opens now and the target fish opens in 70 minutes, you get the alert; if target opens in 2 hours, you do not
   - sound on/off
   - desktop notifications on/off
   - toast popups (always enabled)
@@ -81,6 +84,7 @@ Open the userscript menu on the fish tracker page and set:
 - `Request desktop notification permission` (if you want browser notifications)
 - `Toggle sound` / `Display status and options` as you prefer
 - `Toggle prerequisite fish alerts` if you want alerts only for main fish windows
+- `Set prerequisite target window (minutes)` to choose how far ahead the linked target fish may open (default: `90`)
 
 Tip: toggle menu entries show current state (for example `currently: ON` / `currently: OFF`).
 
@@ -99,6 +103,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 - `Set tracked fish (comma separated)` (shown only in manual mode)
 - `Toggle sound (currently: ON/OFF)`
 - `Toggle prerequisite fish alerts (currently: ON/OFF)`
+- `Set prerequisite target window (minutes, currently: <value>)`
 - `Toggle desktop notifications (currently: ON/OFF)`
 - `Display status and options (currently: ON/OFF)`
 - `Request desktop notification permission`
