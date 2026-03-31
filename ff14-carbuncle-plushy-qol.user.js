@@ -226,8 +226,8 @@
         el.className = "ff14fish-aug-status";
         document.body.appendChild(el);
       }
-      const notificationSupported = "Notification" in globalThis;
-      const np = notificationSupported ? Notification.permission : "unsupported";
+      const notificationState = getNotificationState();
+      const np = notificationState.permission;
       let ap = "off";
       if (settings.sound) {
         ap = state.audioUnlocked ? "on/unlocked" : "on/locked";
@@ -237,7 +237,7 @@
       const prereqWindow = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
       const desktop = desktopEffectiveOn({
         desktopNotification: settings.desktopNotification,
-        notificationSupported,
+        notificationSupported: notificationState.supported,
         permission: np
       }) ? "on" : "off";
       el.textContent = `FFXIV Fish Ping
@@ -311,7 +311,7 @@ notif-perm: ${np}`;
         state.hasToastedNotifBlocked = false;
         new Notification(title, { body });
       } else if (Notification.permission === "denied") {
-        writeSettings({ ...settings, desktopNotification: false });
+        disableDesktopNotificationsDueToDeniedPermission(settings);
         if (!state.hasToastedNotifBlocked) {
           toast("Notifications denied in browser settings.");
           state.hasToastedNotifBlocked = true;
@@ -322,6 +322,16 @@ notif-perm: ${np}`;
         state.hasToastedNotifBlocked = true;
       }
       renderStatus();
+    }
+    function disableDesktopNotificationsDueToDeniedPermission(settings) {
+      writeSettings({ ...settings, desktopNotification: false });
+    }
+    function getNotificationState() {
+      const supported = "Notification" in globalThis;
+      return {
+        supported,
+        permission: supported ? Notification.permission : "unsupported"
+      };
     }
     async function setDesktopNotificationsEnabled(next) {
       const s = readSettings();
@@ -401,15 +411,9 @@ notif-perm: ${np}`;
       const element = node instanceof Element ? node : node?.parentElement;
       return element?.closest("tr") || null;
     }
-    function isTableRelatedNode(node) {
-      return isNodeInTable(node);
-    }
-    function isAugmentationNode(node) {
-      return isAugmentationNodeLike(node);
-    }
     function handleChildListMutation(mutation) {
       const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
-      const relevantNodes = changedNodes.filter((node) => !isAugmentationNode(node));
+      const relevantNodes = changedNodes.filter((node) => !isAugmentationNodeLike(node));
       if (!relevantNodes.length) return false;
       let changed = false;
       if (mutation.target instanceof Element && mutation.target.closest("table")) {
@@ -423,7 +427,7 @@ notif-perm: ${np}`;
       return changed;
     }
     function handleNonChildListMutation(mutation) {
-      if (isAugmentationNode(mutation.target)) return false;
+      if (isAugmentationNodeLike(mutation.target)) return false;
       const row = getRowFromNode(mutation.target);
       if (row) {
         markRowDirty(row);
@@ -436,7 +440,7 @@ notif-perm: ${np}`;
       return false;
     }
     function mutationIsRelevant(mutation) {
-      if (!isTableRelatedNode(mutation.target)) return false;
+      if (!isNodeInTable(mutation.target)) return false;
       if (mutation.type === "childList") return handleChildListMutation(mutation);
       return handleNonChildListMutation(mutation);
     }
@@ -457,6 +461,7 @@ notif-perm: ${np}`;
         for (const mutation of mutations) {
           if (!mutationIsRelevant(mutation)) continue;
           sawRelevantChange = true;
+          break;
         }
         if (sawRelevantChange) scheduleProcess();
       });
@@ -491,13 +496,13 @@ notif-perm: ${np}`;
     }
     function updateExactTimes() {
       const rows = getFishRows();
-      rows.forEach((row) => {
+      for (const row of rows) {
         const meta = getRowMeta(row);
         const { availCell, currentText, currentVal, upcomingVal } = meta;
-        if (!availCell) return;
+        if (!availCell) continue;
         const loweredText = currentText.toLowerCase();
         const cacheKey = makeExactCacheKey({ currentVal, upcomingVal, currentText });
-        if (meta.renderedExactKey === cacheKey) return;
+        if (meta.renderedExactKey === cacheKey) continue;
         meta.renderedExactKey = cacheKey;
         let line = availCell.querySelector(".ff14fish-aug-exact");
         if (!line) {
@@ -514,7 +519,7 @@ notif-perm: ${np}`;
         }
         if (upcomingVal) parts.push(`Next: ${formatLocalTime(Number(upcomingVal))}`);
         line.textContent = parts.join(" | ");
-      });
+      }
     }
     function runAlerts() {
       const settings = readSettings();
@@ -548,7 +553,7 @@ notif-perm: ${np}`;
         if (!shouldAlert({ nowMs: now, startMs: start, beforeMinutes: settings.beforeMinutes })) return;
         const key = makeAlertKey({ fishName, startMs: start, beforeMinutes: settings.beforeMinutes });
         if (state.alerted.has(key)) return;
-        state.alerted.set(key, start);
+        state.alerted.set(key, now);
         const diff = start - now;
         const mins = Math.max(1, Math.ceil(diff / 6e4));
         const msg = `${fishName} opens at ${formatLocalTime(start)} (in ~${mins} min)`;
@@ -573,10 +578,11 @@ notif-perm: ${np}`;
       const prereqLabel = settings.prerequisiteAlerts ? "ON" : "OFF";
       const prereqWindowLabel = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
       const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
+      const notificationState = getNotificationState();
       const desktopLabel = desktopEffectiveOn({
         desktopNotification: settings.desktopNotification,
-        notificationSupported: "Notification" in globalThis,
-        permission: "Notification" in globalThis ? Notification.permission : "unsupported"
+        notificationSupported: notificationState.supported,
+        permission: notificationState.permission
       }) ? "ON" : "OFF";
       const badgeLabel = settings.statusBadge ? "ON" : "OFF";
       const register = (label, handler) => {

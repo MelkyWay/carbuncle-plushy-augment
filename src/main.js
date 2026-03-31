@@ -131,8 +131,8 @@ import {
       el.className = "ff14fish-aug-status";
       document.body.appendChild(el);
     }
-    const notificationSupported = ("Notification" in globalThis);
-    const np = notificationSupported ? Notification.permission : "unsupported";
+    const notificationState = getNotificationState();
+    const np = notificationState.permission;
     let ap = "off";
     if (settings.sound) {
       ap = state.audioUnlocked ? "on/unlocked" : "on/locked";
@@ -142,7 +142,7 @@ import {
     const prereqWindow = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
     const desktop = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
-      notificationSupported,
+      notificationSupported: notificationState.supported,
       permission: np
     }) ? "on" : "off";
     el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nprereq alerts: ${prereq}\nprereq window: ${prereqWindow}m\nsound: ${ap}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
@@ -219,7 +219,7 @@ import {
       state.hasToastedNotifBlocked = false;
       new Notification(title, { body });
     } else if (Notification.permission === "denied") {
-      writeSettings({ ...settings, desktopNotification: false });
+      disableDesktopNotificationsDueToDeniedPermission(settings);
       if (!state.hasToastedNotifBlocked) {
         toast("Notifications denied in browser settings.");
         state.hasToastedNotifBlocked = true;
@@ -230,6 +230,19 @@ import {
       state.hasToastedNotifBlocked = true;
     }
     renderStatus();
+  }
+
+  function disableDesktopNotificationsDueToDeniedPermission(settings) {
+    // Keep persisted state aligned with browser capability when permission is explicitly denied.
+    writeSettings({ ...settings, desktopNotification: false });
+  }
+
+  function getNotificationState() {
+    const supported = ("Notification" in globalThis);
+    return {
+      supported,
+      permission: supported ? Notification.permission : "unsupported"
+    };
   }
 
   async function setDesktopNotificationsEnabled(next) {
@@ -324,17 +337,9 @@ import {
     return element?.closest("tr") || null;
   }
 
-  function isTableRelatedNode(node) {
-    return isNodeInTable(node);
-  }
-
-  function isAugmentationNode(node) {
-    return isAugmentationNodeLike(node);
-  }
-
   function handleChildListMutation(mutation) {
     const changedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
-    const relevantNodes = changedNodes.filter((node) => !isAugmentationNode(node));
+    const relevantNodes = changedNodes.filter((node) => !isAugmentationNodeLike(node));
     if (!relevantNodes.length) return false;
 
     let changed = false;
@@ -351,7 +356,7 @@ import {
   }
 
   function handleNonChildListMutation(mutation) {
-    if (isAugmentationNode(mutation.target)) return false;
+    if (isAugmentationNodeLike(mutation.target)) return false;
 
     const row = getRowFromNode(mutation.target);
     if (row) {
@@ -368,7 +373,7 @@ import {
   }
 
   function mutationIsRelevant(mutation) {
-    if (!isTableRelatedNode(mutation.target)) return false;
+    if (!isNodeInTable(mutation.target)) return false;
     if (mutation.type === "childList") return handleChildListMutation(mutation);
     return handleNonChildListMutation(mutation);
   }
@@ -392,6 +397,7 @@ import {
       for (const mutation of mutations) {
         if (!mutationIsRelevant(mutation)) continue;
         sawRelevantChange = true;
+        break;
       }
 
       if (sawRelevantChange) scheduleProcess();
@@ -432,14 +438,14 @@ import {
 
   function updateExactTimes() {
     const rows = getFishRows();
-    rows.forEach((row) => {
+    for (const row of rows) {
       const meta = getRowMeta(row);
       const { availCell, currentText, currentVal, upcomingVal } = meta;
-      if (!availCell) return;
+      if (!availCell) continue;
 
       const loweredText = currentText.toLowerCase();
       const cacheKey = makeExactCacheKey({ currentVal, upcomingVal, currentText });
-      if (meta.renderedExactKey === cacheKey) return;
+      if (meta.renderedExactKey === cacheKey) continue;
       meta.renderedExactKey = cacheKey;
 
       let line = availCell.querySelector(".ff14fish-aug-exact");
@@ -458,7 +464,7 @@ import {
       }
       if (upcomingVal) parts.push(`Next: ${formatLocalTime(Number(upcomingVal))}`);
       line.textContent = parts.join(" | ");
-    });
+    }
   }
 
   function runAlerts() {
@@ -475,6 +481,8 @@ import {
     rows.forEach((row) => {
       const meta = getRowMeta(row);
       const start = computeNextStart(meta);
+      // Assumption: fish-intuition prerequisite rows are rendered after their target fish row.
+      // If site ordering changes, linkedMainStart inference must be revisited.
       const linkedMainStart = meta.isPrerequisite ? lastMainStart : null;
       if (!meta.isPrerequisite) lastMainStart = start;
       contexts.push({ row, meta, start, linkedMainStart });
@@ -500,7 +508,7 @@ import {
 
       const key = makeAlertKey({ fishName, startMs: start, beforeMinutes: settings.beforeMinutes });
       if (state.alerted.has(key)) return;
-      state.alerted.set(key, start);
+      state.alerted.set(key, now);
 
       const diff = start - now;
       const mins = Math.max(1, Math.ceil(diff / 60000));
@@ -529,10 +537,11 @@ import {
     const prereqLabel = settings.prerequisiteAlerts ? "ON" : "OFF";
     const prereqWindowLabel = Math.max(1, Number(settings.prerequisiteLinkWindowMinutes) || 90);
     const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
+    const notificationState = getNotificationState();
     const desktopLabel = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
-      notificationSupported: ("Notification" in globalThis),
-      permission: ("Notification" in globalThis) ? Notification.permission : "unsupported"
+      notificationSupported: notificationState.supported,
+      permission: notificationState.permission
     }) ? "ON" : "OFF";
     const badgeLabel = settings.statusBadge ? "ON" : "OFF";
 
