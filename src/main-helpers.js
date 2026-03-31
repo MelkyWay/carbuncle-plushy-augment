@@ -41,6 +41,11 @@ export function hasTableRowStructureNode(nodes) {
   });
 }
 
+export function isPrerequisiteFishRow(row) {
+  if (!row || row.nodeType !== 1) return false;
+  return /\bfish-intuition-row\b/.test(String(row.className || ""));
+}
+
 export function markRowMetaDirty(rowMeta, row) {
   if (!row) return false;
   const meta = rowMeta.get(row);

@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         FF14 Carbuncle Plushy QoL
-// @namespace    carbuncleplushy-qol
+// @name         FF14 Carbuncle Plushy QoL (Develop)
+// @namespace    carbuncleplushy-qol-develop
 // @version      1.8.1
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
-// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
-// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/main/ff14-carbuncle-plushy-qol.user.js
+// @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/develop/ff14-carbuncle-plushy-qol-develop.user.js
+// @downloadURL  https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/develop/ff14-carbuncle-plushy-qol-develop.user.js
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
@@ -115,7 +115,7 @@
   // src/main.js
   (() => {
     "use strict";
-    const BUILD_CHANNEL = "stable";
+    const BUILD_CHANNEL = "develop";
     const STORAGE_KEY = BUILD_CHANNEL === "develop" ? "ff14fish_aug_settings_develop" : "ff14fish_aug_settings";
     const DEFAULTS = {
       fish: ["Mahar"],

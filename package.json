@@ -6,6 +6,7 @@
   "scripts": {
     "bench:e2e": "node scripts/benchmark-e2e.mjs",
     "build": "node scripts/build-userscript.mjs",
+    "build:develop": "node scripts/build-userscript.mjs --channel=develop",
     "postbuild": "node scripts/sync-sonar-version.mjs",
     "sync:sonar": "node scripts/sync-sonar-version.mjs",
     "test": "vitest run",

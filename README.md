@@ -12,6 +12,7 @@ Repository: [MelkyWay/carbuncle-plushy-qol](https://github.com/MelkyWay/carbuncl
   - `Auto (website)` (default): alerts follow fish currently shown on the page.
   - `Manual mode`: alerts follow your own saved fish list.
 - Choose your alert style:
+  - prerequisite fish alerts on/off (the extra fish rows used for Fisher's Intuition chains)
   - sound on/off
   - desktop notifications on/off
   - toast popups (always enabled)
@@ -43,6 +44,17 @@ Why this is recommended:
 - works well with userscript update checks
 - keeps your installed script aligned with the repo version
 
+### Option A2: Install the Develop/Beta Channel
+
+If you want early changes before they land on `main`, install the develop script:
+
+- `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/develop/ff14-carbuncle-plushy-qol-develop.user.js`
+
+Notes:
+- this is a separate userscript install (`FF14 Carbuncle Plushy QoL (Develop)`), so it does not replace stable
+- it auto-updates from `develop`
+- regular users on stable (`main`) do not receive these updates until changes are merged to `main`
+
 ### Option B: Copy/paste install
 
 1. Install a userscript manager:
@@ -65,6 +77,7 @@ Open the userscript menu on the fish tracker page and set:
 - `Set tracked fish (comma separated)` (shown only in manual mode)
 - `Request desktop notification permission` (if you want browser notifications)
 - `Toggle sound` / `Display status and options` as you prefer
+- `Toggle prerequisite fish alerts` if you want alerts only for main fish windows
 
 Tip: toggle menu entries show current state (for example `currently: ON` / `currently: OFF`).
 
@@ -73,6 +86,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 - If you filter/search fish on the site, `auto (website)` mode will alert only for what is currently displayed.
 - If you prefer a fixed target list, switch to `manual` mode and use:
   - `Set tracked fish (comma separated)`
+- If you only care about final target fish windows, set `Toggle prerequisite fish alerts` to `OFF`.
 - Use `Test alert` anytime to verify your setup.
 
 ## Menu Options
@@ -81,6 +95,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 - `Toggle tracking mode (currently: AUTO (WEBSITE)/MANUAL)`
 - `Set tracked fish (comma separated)` (shown only in manual mode)
 - `Toggle sound (currently: ON/OFF)`
+- `Toggle prerequisite fish alerts (currently: ON/OFF)`
 - `Toggle desktop notifications (currently: ON/OFF)`
 - `Display status and options (currently: ON/OFF)`
 - `Request desktop notification permission`
@@ -112,6 +127,7 @@ Tip: toggle menu entries show current state (for example `currently: ON` / `curr
 
 - Toast popups are always enabled in current versions.
 - If needed, disable desktop notifications and/or sound to reduce interruption.
+- You can also disable prerequisite fish alerts to reduce alert volume during intuition chains.
 
 ## Notes
 

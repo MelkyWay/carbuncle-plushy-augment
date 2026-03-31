@@ -5,6 +5,7 @@ import {
   isNodeInTable,
   isAugmentationNodeLike,
   hasTableRowStructureNode,
+  isPrerequisiteFishRow,
   markRowMetaDirty,
   handleStorageEventForSettings
 } from "../src/main-helpers.js";
@@ -128,6 +129,22 @@ describe("row metadata invalidation", () => {
     const rowMeta = new WeakMap();
     expect(markRowMetaDirty(rowMeta, {})).toBe(false);
     expect(markRowMetaDirty(rowMeta, null)).toBe(false);
+  });
+});
+
+describe("prerequisite fish row detection", () => {
+  it("detects fish-intuition rows by class name", () => {
+    expect(isPrerequisiteFishRow({ nodeType: 1, className: "fish-intuition-row fish-entry" })).toBe(true);
+    expect(isPrerequisiteFishRow({ nodeType: 1, className: "fish-entry fish-active" })).toBe(false);
+  });
+
+  it("uses whole-class matching (no partial class false positives)", () => {
+    expect(isPrerequisiteFishRow({ nodeType: 1, className: "fish-intuition-rowish fish-entry" })).toBe(false);
+  });
+
+  it("returns false for invalid row-like values", () => {
+    expect(isPrerequisiteFishRow(null)).toBe(false);
+    expect(isPrerequisiteFishRow({ nodeType: 3, className: "fish-intuition-row" })).toBe(false);
   });
 });
 

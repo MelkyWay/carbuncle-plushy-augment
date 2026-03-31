@@ -11,6 +11,7 @@ import {
   isNodeInTable,
   isAugmentationNodeLike,
   hasTableRowStructureNode,
+  isPrerequisiteFishRow,
   markRowMetaDirty,
   handleStorageEventForSettings
 } from "./main-helpers.js";
@@ -18,13 +19,17 @@ import {
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "ff14fish_aug_settings";
+  const BUILD_CHANNEL = __QOL_CHANNEL__;
+  const STORAGE_KEY = BUILD_CHANNEL === "develop"
+    ? "ff14fish_aug_settings_develop"
+    : "ff14fish_aug_settings";
   const DEFAULTS = {
     fish: ["Mahar"],
     beforeMinutes: 10,
     sound: true,
     desktopNotification: true,
     useVisibleFish: true,
+    prerequisiteAlerts: true,
     statusBadge: true
   };
 
@@ -131,12 +136,13 @@ import {
       ap = state.audioUnlocked ? "on/unlocked" : "on/locked";
     }
     const tracking = settings.useVisibleFish ? "auto (website)" : "manual";
+    const prereq = settings.prerequisiteAlerts ? "on" : "off";
     const desktop = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
       notificationSupported,
       permission: np
     }) ? "on" : "off";
-    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nsound: ${ap}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
+    el.textContent = `FFXIV Fish Ping\ntracked: ${tracking}\nprereq alerts: ${prereq}\nsound: ${ap}\ndesktop: ${desktop}\nnotif-perm: ${np}`;
   }
 
   function getAudioContext() {
@@ -272,7 +278,8 @@ import {
       upcoming?.closest("td") ||
       null;
 
-    return { fishName, fishLink, current, upcoming, availCell };
+    const isPrerequisite = isPrerequisiteFishRow(row);
+    return { fishName, fishLink, current, upcoming, availCell, isPrerequisite };
   }
 
   function getRowMeta(row) {
@@ -294,6 +301,7 @@ import {
     meta.currentVal = parsed.current?.dataset?.val || "";
     meta.upcomingVal = parsed.upcoming?.dataset?.val || "";
     meta.upcomingPrevClose = parsed.upcoming?.dataset?.prevclose || "";
+    meta.isPrerequisite = parsed.isPrerequisite;
     meta.renderedExactKey = null;
     meta.visibilityDirty = true;
     meta.dirty = false;
@@ -463,6 +471,7 @@ import {
       const { fishName, fishLink } = meta;
 
       if (!fishName || !fishLink) return;
+      if (!settings.prerequisiteAlerts && meta.isPrerequisite) return;
       if (settings.useVisibleFish && !isRowVisible(meta, row)) return;
       if (!settings.useVisibleFish && !manualTracked.has(fishName.toLowerCase())) return;
 
@@ -499,6 +508,7 @@ import {
 
     const settings = readSettings();
     const soundLabel = settings.sound ? "ON" : "OFF";
+    const prereqLabel = settings.prerequisiteAlerts ? "ON" : "OFF";
     const modeLabel = settings.useVisibleFish ? "AUTO (WEBSITE)" : "MANUAL";
     const desktopLabel = desktopEffectiveOn({
       desktopNotification: settings.desktopNotification,
@@ -551,6 +561,15 @@ import {
       writeSettings({ ...s, sound: next });
       if (next) state.hasToastedAudioLocked = false;
       toast(`Sound ${next ? "enabled" : "disabled"}.`);
+      renderStatus();
+      if (state.canRefreshMenu) refreshMenu();
+    });
+
+    register(`Toggle prerequisite fish alerts (currently: ${prereqLabel})`, () => {
+      const s = readSettings();
+      const next = !s.prerequisiteAlerts;
+      writeSettings({ ...s, prerequisiteAlerts: next });
+      toast(`Prerequisite fish alerts ${next ? "enabled" : "disabled"}.`);
       renderStatus();
       if (state.canRefreshMenu) refreshMenu();
     });
