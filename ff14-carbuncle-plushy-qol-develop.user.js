@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FF14 Carbuncle Plushy QoL (Develop)
 // @namespace    carbuncleplushy-qol-develop
-// @version      1.8.2
+// @version      1.8.3
 // @description  Adds exact availability times and pre-window alerts for selected fish.
 // @match        https://ff14fish.carbuncleplushy.com/*
 // @updateURL    https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/develop/ff14-carbuncle-plushy-qol-develop.user.js
