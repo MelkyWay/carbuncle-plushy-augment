@@ -50,6 +50,9 @@ If you want early changes before they land on `main`, install the develop script
 
 - `https://raw.githubusercontent.com/MelkyWay/carbuncle-plushy-qol/develop/ff14-carbuncle-plushy-qol-develop.user.js`
 
+Warning:
+- `develop` is a beta channel. Stability is not guaranteed and breaking changes can happen between updates.
+
 Notes:
 - this is a separate userscript install (`FF14 Carbuncle Plushy QoL (Develop)`), so it does not replace stable
 - it auto-updates from `develop`
